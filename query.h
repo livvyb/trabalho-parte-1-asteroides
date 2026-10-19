@@ -7,6 +7,8 @@
 #define MAX_FILTERS 16
 #define MAX_SIMS 16
 
+// arquivo contendo os critérios da busca
+
 typedef enum { OP_EQ, OP_NEQ, OP_LT, OP_LE, OP_GT, OP_GE } OpType;
 
 typedef struct {

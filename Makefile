@@ -1,0 +1,30 @@
+
+CC = gcc
+CFLAGS = -Wall -Wextra -pedantic -std=c11
+OBJETOS = main.o cli.o item.o query.o
+EXECUTAVEL = trabalho
+
+all: $(EXECUTAVEL)
+
+$(EXECUTAVEL): $(OBJETOS)
+	$(CC) $(CFLAGS) -o $(EXECUTAVEL) $(OBJETOS) -lm
+
+main.o: main.c cli.h item.h query.h
+	$(CC) $(CFLAGS) -c main.c -o main.o
+
+cli.o: cli.c cli.h
+	$(CC) $(CFLAGS) -c cli.c -o cli.o
+
+item.o: item.c item.h
+	$(CC) $(CFLAGS) -c item.c -o item.o
+
+query.o: query.c query.h item.h
+	$(CC) $(CFLAGS) -c query.c -o query.o
+
+run: $(EXECUTAVEL)
+	./$(EXECUTAVEL) $(ARGS)
+
+clean:
+	rm -f $(OBJETOS) $(EXECUTAVEL)
+
+.PHONY: all run clean

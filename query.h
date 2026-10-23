@@ -9,7 +9,7 @@
 
 // arquivo contendo os critérios da busca
 
-typedef enum { OP_EQ, OP_NEQ, OP_LT, OP_LE, OP_GT, OP_GE } OpType;
+typedef enum { OP_EQ, OP_DIFF, OP_MIN, OP_MINEQ, OP_MAX, OP_MAXEQ } OpType;
 
 typedef struct {
     char field[64];
@@ -45,7 +45,16 @@ typedef struct {
     int cross_count;
 } Query;
 
+
+static void copia_texto(char *destino, size_t tamanho, const char *origem);
+static char *remove_espacos(char *texto);
+static bool converte_numero(const char *texto, double *valor);
+static bool converte_bool(const char *texto, bool *valor);
+static bool converte_operador(const char *texto, OpType *op);
+static bool compara_numero(double valor, double alvo, OpType op);
+static bool compara_texto(const char *valor, const char *alvo, OpType op);
+static bool avalia_filtro(const Filter *f, const Asteroid *ast);
 bool carrega_query(const char *filepath, Query *q);
 bool avalia_query(const Query *q, const Asteroid *ast, double *out_similarity);
 
-#endif
+#endif;

@@ -1,7 +1,6 @@
 
 #include <stdio.h>
 #include <string.h>
-
 #include "cli.h"
 #include "item.h"
 #include "query.h"

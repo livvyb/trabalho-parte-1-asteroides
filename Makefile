@@ -1,7 +1,7 @@
 
 CC = gcc
 CFLAGS = -Wall -Wextra -pedantic -std=c11
-OBJETOS = main.o cli.o item.o query.o reader.o reader_nasa.o
+OBJETOS = main.o cli.o item.o query.o reader.o reader_nasa.o estrutura.o lista_seq.o
 EXECUTAVEL = trabalho
 
 all: $(EXECUTAVEL)
@@ -26,6 +26,12 @@ reader.o: reader.c reader.h reader_nasa.h item.h
 
 reader_nasa.o: reader_nasa.c reader_nasa.h reader.h item.h
 	$(CC) $(CFLAGS) -c reader_nasa.c -o reader_nasa.o
+
+estrutura.o: estrutura.c estrutura.h lista_seq.h item.h query.h
+	$(CC) $(CFLAGS) -c estrutura.c -o estrutura.o
+
+lista_seq.o: lista_seq.c lista_seq.h item.h
+	$(CC) $(CFLAGS) -c lista_seq.c -o lista_seq.o
 
 run: $(EXECUTAVEL)
 	./$(EXECUTAVEL) $(ARGS)

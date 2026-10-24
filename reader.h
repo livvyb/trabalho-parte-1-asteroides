@@ -3,78 +3,39 @@
 
 #include "item.h"
 #include <stdbool.h>
-#include <stdio.h>
 
-#define READER_MAX_COLUNAS 64
+/* Leitor genérico de CSV: abre o arquivo, confere o cabeçalho e separa os
+   campos de cada linha. A conversão dos campos em ITEM fica a cargo do
+   leitor específico do domínio (ex.: reader_nasa). */
+
 #define READER_MAX_LINHA 8192
-#define READER_MAX_CAMPO 512
+#define READER_MAX_COLUNAS 128
 
+typedef struct reader_ READER;
+
+// O que cada leitor específico precisa informar (ex.: LEITOR_NASA)
 typedef struct {
-    FILE *arquivo;
-    char cabecalho[READER_MAX_LINHA];
-    char delimitador;
+    const char *nome;                  // nome usado em --reader
+    char delimitador;                  // ',' ou ';'
+    const char **colunas;              // cabeçalho esperado, na ordem
     int quantidade_colunas;
-    char nomes_colunas[READER_MAX_COLUNAS][READER_MAX_CAMPO];
-    int indices[20];
-} Reader;
+    void *(*converter)(char **campos); // devolve NULL se a linha for inválida
+    const ITEM_OPS *ops;               // acesso aos campos dos dados convertidos
+} LEITOR;
 
-/* Campos do Asteroid, na ordem usada por item.h. */
-enum {
-    COL_DESIGNATION,
-    COL_FULLNAME,
-    COL_DATE,
-    COL_YEAR,
-    COL_MONTH,
-    COL_DISTANCE,
-    COL_VELOCITY,
-    COL_MAGNITUDE,
-    COL_DAYS,
-    COL_PAST,
-    COL_FUTURE,
-    COL_RISK,
-    COL_PANIC,
-    COL_CATEGORY,
-    COL_VERDICT,
-    COL_SENTRY,
-    COL_IMPACT_PROB,
-    COL_TORINO,
-    COL_PALERMO,
-    COL_DIAMETER,
-    TOTAL_CAMPOS
-};
+// Abre o arquivo com o leitor 'nome'. Retorna NULL em caso de erro
+READER *reader_abrir(const char *nome, const char *caminho);
 
-/* Nomes das colunas que o leitor espera encontrar. */
-static const char *campos_esperados[TOTAL_CAMPOS] = {
-    "asteroid_designation",
-    "asteroid_fullname",
-    "close_approach_date",
-    "year",
-    "month",
-    "distance_au",
-    "velocity_km_s",
-    "absolute_magnitude",
-    "days_until_approach",
-    "is_past_event",
-    "is_future_event",
-    "risk_score",
-    "panic_level",
-    "threat_category",
-    "panic_verdict",
-    "on_sentry_list",
-    "sentry_impact_prob",
-    "sentry_torino_scale",
-    "sentry_palermo_scale",
-    "sentry_diameter_km"
-};
+// Lê o próximo registro válido. Linhas inválidas são puladas com aviso
+// no stderr. Retorna NULL no fim do arquivo
+ITEM *reader_proximo(READER *reader);
 
-/* Abre o CSV e identifica as colunas. */
-bool reader_abre(Reader *reader, const char *caminho);
+// Cabeçalho e fim de linha ("\r\n" ou "\n") originais, para a saída
+const char *reader_cabecalho(const READER *reader);
+const char *reader_fim_de_linha(const READER *reader);
 
-/* Lê um registro e o converte para Asteroid. */
-bool reader_proximo(Reader *reader, Asteroid *asteroid);
+long reader_linhas_puladas(const READER *reader);
 
-/* Fecha o arquivo aberto. */
-void reader_fecha(Reader *reader);
-
+void reader_fechar(READER **reader);
 
 #endif

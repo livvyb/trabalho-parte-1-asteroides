@@ -53,8 +53,8 @@ static bool converte_bool(const char *texto, bool *valor);
 static bool converte_operador(const char *texto, OpType *op);
 static bool compara_numero(double valor, double alvo, OpType op);
 static bool compara_texto(const char *valor, const char *alvo, OpType op);
-static bool avalia_filtro(const Filter *f, const Asteroid *ast);
+static bool avalia_filtro(const Filter *f, const ITEM *item);
 bool carrega_query(const char *filepath, Query *q);
-bool avalia_query(const Query *q, const Asteroid *ast, double *out_similarity);
+bool avalia_query(const Query *q, const ITEM *item, double *out_similarity);
 
 #endif;

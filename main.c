@@ -1,17 +1,21 @@
-
 #include <stdio.h>
-#include <string.h>
 #include "cli.h"
 #include "item.h"
 #include "query.h"
+#include "reader.h"
 
+/* Versão provisória: lê o CSV com o reader escolhido e avalia a consulta
+   em cada registro. As estruturas (--base/--result) ainda não foram
+   integradas, então cada item é liberado logo após ser avaliado. */
 int main(int argc, char *argv[]) {
     ARGS args;
     Query query;
-    Asteroid ast;
-    double similaridade = 0.0;
+    READER *reader;
+    ITEM *item;
+    long lidos = 0;
+    long aceitos = 0;
 
-    /* 1. Le os argumentos da linha de comando */
+    // 1. Le os argumentos da linha de comando
     if (!parse_cli_args(argc, argv, &args)) {
         printf("Erro: argumentos invalidos ou incompletos.\n");
         printf("Uso: ./trabalho --reader nasa --input arquivo.csv "
@@ -21,59 +25,43 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    printf("Argumentos carregados com sucesso.\n");
-    printf("Arquivo de entrada: %s\n", args.input_path);
-    printf("Arquivo de consulta: %s\n", args.query_path);
-
-    /* 2. Carrega a consulta */
+    // 2. Carrega a consulta
     if (!carrega_query(args.query_path, &query)) {
-        printf("Erro: nao foi possivel carregar a consulta.\n");
+        printf("STATUS=ERROR\n");
+        fprintf(stderr, "erro: nao foi possivel carregar a consulta\n");
         return 1;
     }
 
-    printf("Consulta carregada com sucesso.\n");
-
-    /* 3. Cria um asteroide ficticio para o teste */
-    memset(&ast, 0, sizeof(Asteroid));
-
-    strcpy(ast.asteroid_designation, "TESTE-001");
-    strcpy(ast.asteroid_fullname, "Asteroide de teste");
-    strcpy(ast.close_approach_date, "2027-01-15");
-
-    ast.year = 2027;
-    ast.month = 1;
-    ast.distance_au = 0.05;
-    ast.velocity_km_s = 15.0;
-    ast.absolute_magnitude = 22.0;
-    ast.has_absolute_magnitude = true;
-    ast.days_until_approach = 90;
-    ast.is_past_event = false;
-    ast.is_future_event = true;
-    ast.risk_score = 0.70;
-    ast.panic_level = 2;
-
-    strcpy(ast.threat_category, "BAIXO");
-    strcpy(ast.panic_verdict, "Teste");
-
-    ast.on_sentry_list = false;
-    ast.has_sentry_data = false;
-
-    /* 4. Avalia o asteroide de acordo com a consulta */
-    printf("\nAvaliando o asteroide de teste...\n");
-
-    if (avalia_query(&query, &ast, &similaridade)) {
-        printf("Resultado: ASTEROIDE ACEITO\n");
-        printf("Designacao: %s\n", ast.asteroid_designation);
-        printf("Distancia: %.4f AU\n", ast.distance_au);
-        printf("Velocidade: %.2f km/s\n", ast.velocity_km_s);
-        printf("Pontuacao de risco: %.2f\n", ast.risk_score);
-        printf("Similaridade: %.4f\n", similaridade);
-    } else {
-        printf("Resultado: ASTEROIDE REJEITADO\n");
-        printf("O asteroide nao satisfez a consulta.\n");
+    // 3. Abre o dataset com o leitor pedido em --reader
+    reader = reader_abrir(args.reader, args.input_path);
+    if (reader == NULL) {
+        printf("STATUS=ERROR\n");
+        return 1;
     }
 
-    printf("\nTeste finalizado.\n");
+    // 4. Le registro a registro (respeitando --limit; 0 = todos)
+    while ((args.limit == 0 || lidos < args.limit) &&
+           (item = reader_proximo(reader)) != NULL) {
+        double similaridade;
+
+        lidos++;
+
+        if (avalia_query(&query, item, &similaridade)) {
+            item_set_similaridade(item, similaridade);
+            aceitos++;
+        }
+        item_apagar(&item);
+    }
+
+    if (reader_linhas_puladas(reader) > 0) {
+        fprintf(stderr, "aviso: %ld linhas invalidas ignoradas no total\n",
+                reader_linhas_puladas(reader));
+    }
+    reader_fechar(&reader);
+
+    printf("STATUS=OK\n");
+    printf("INPUT_RECORDS=%ld\n", lidos);
+    printf("MATCHED_RECORDS=%ld\n", aceitos);
 
     return 0;
 }

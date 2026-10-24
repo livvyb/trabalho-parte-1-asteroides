@@ -1,80 +1,86 @@
 #include "item.h"
 #include <stdlib.h>
-#include <string.h>
 
-void free_asteroid(ITEM *item) {
-    if (item != NULL){ 
-        free(item);
+struct item_ {
+    char *linha;           // linha original do CSV, sem o fim de linha (saída fiel)
+    void *dados;           // registro já convertido pelo leitor (ex.: Asteroid)
+    const ITEM_OPS *ops;   // como ler os campos de dados
+    double similaridade;   // preenchida pela consulta
+};
+
+ITEM *item_criar(char *linha, void *dados, const ITEM_OPS *ops) {
+    ITEM *item;
+
+    if (linha == NULL || dados == NULL || ops == NULL) {
+        return NULL;
+    }
+
+    item = malloc(sizeof(ITEM));
+    if (item == NULL) {
+        return NULL;
+    }
+
+    item->linha = linha;
+    item->dados = dados;
+    item->ops = ops;
+    item->similaridade = 0.0;
+
+    return item;
+}
+
+void item_apagar(ITEM **item) {
+    if (item != NULL && *item != NULL) {
+        // os dados do domínio são liberados por quem sabe como foram criados
+        if ((*item)->ops->apagar != NULL) {
+            (*item)->ops->apagar((*item)->dados);
+        }
+        free((*item)->linha);
+        free(*item);
+        *item = NULL;
     }
 }
 
-void print_asteroid_csv(const ITEM *item, FILE *out) {
-    if (item == NULL || out == NULL){
-            return;
+double item_get_numero(const ITEM *item, const char *campo, bool *ok) {
+    if (item == NULL || campo == NULL) {
+        *ok = false;
+        return 0.0;
     }
-    // item é genérico (estrutura tad) precisamos converte-lo para o tipo concreto Asteroid
-    const Asteroid *a = (const Asteroid *)item;
-
-    fprintf(out, "%s,%s,%s,%d,%d,%.16g,%.16g,", 
-            a->asteroid_designation, a->asteroid_fullname, 
-            a->close_approach_date, a->year, a->month, 
-            a->distance_au, a->velocity_km_s);
-
-    if (a->has_absolute_magnitude) {
-        fprintf(out, "%.16g,", a->absolute_magnitude);
-    } else {
-        fprintf(out, ",");
-    }
-
-    fprintf(out, "%d,%s,%s,%.16g,%d,%s,%s,%s,",
-            a->days_until_approach,
-            a->is_past_event ? "True" : "False",
-            a->is_future_event ? "True" : "False",
-            a->risk_score, a->panic_level,
-            a->threat_category, a->panic_verdict,
-            a->on_sentry_list ? "True" : "False");
-
-    if (a->has_sentry_data) {
-        fprintf(out, "%.16g,%.16g,%.16g,%.16g\n",
-                a->sentry_impact_prob, a->sentry_torino_scale,
-                a->sentry_palermo_scale, a->sentry_diameter_km);
-    } else {
-        fprintf(out, ",,,\n");
-        // as virgulas separam os quatro campos vazios caso nao possua sentry data
-    }
-}
-// recebe nome de um campo e devolve valor numerico
-double asteroid_get_numeric_field(const Asteroid *ast, const char *field, bool *valid) {
-    *valid = true; //comeca supondo que sera campo valido
-    if (strcmp(field, "distance_au") == 0) return ast->distance_au;
-    if (strcmp(field, "velocity_km_s") == 0) return ast->velocity_km_s;
-    if (strcmp(field, "absolute_magnitude") == 0) {
-        *valid = ast->has_absolute_magnitude;
-        return ast->absolute_magnitude;
-    }
-    if (strcmp(field, "risk_score") == 0) return ast->risk_score;
-    if (strcmp(field, "year") == 0) return (double)ast->year;
-    if (strcmp(field, "month") == 0) return (double)ast->month;
-    if (strcmp(field, "panic_level") == 0) return (double)ast->panic_level;
-    
-    *valid = false;
-    // apenas valor de retorno, campo ja foi marcado como invalido acima 
-    return 0.0;
+    return item->ops->get_numero(item->dados, campo, ok);
 }
 
-bool asteroid_get_bool_field(const Asteroid *ast, const char *field, bool *valid) {
-    *valid = true;
-    if (strcmp(field, "is_past_event") == 0) return ast->is_past_event;
-    if (strcmp(field, "is_future_event") == 0) return ast->is_future_event;
-    if (strcmp(field, "on_sentry_list") == 0) return ast->on_sentry_list;
-    
-    *valid = false;
-    return false;
+bool item_get_bool(const ITEM *item, const char *campo, bool *ok) {
+    if (item == NULL || campo == NULL) {
+        *ok = false;
+        return false;
+    }
+    return item->ops->get_bool(item->dados, campo, ok);
 }
 
-const char* asteroid_get_string_field(const Asteroid *ast, const char *field) {
-    if (strcmp(field, "asteroid_designation") == 0) return ast->asteroid_designation;
-    if (strcmp(field, "threat_category") == 0) return ast->threat_category;
-    if (strcmp(field, "panic_verdict") == 0) return ast->panic_verdict;
-    return "";
+const char *item_get_texto(const ITEM *item, const char *campo) {
+    if (item == NULL || campo == NULL) {
+        return NULL;
+    }
+    return item->ops->get_texto(item->dados, campo);
+}
+
+void item_set_similaridade(ITEM *item, double similaridade) {
+    if (item != NULL) {
+        item->similaridade = similaridade;
+    }
+}
+
+double item_get_similaridade(const ITEM *item) {
+    return item != NULL ? item->similaridade : 0.0;
+}
+
+void item_escrever(const ITEM *item, const char *fim_de_linha, FILE *saida) {
+    if (item != NULL && fim_de_linha != NULL && saida != NULL) {
+        fprintf(saida, "%s%s", item->linha, fim_de_linha);
+    }
+}
+
+void item_imprimir(const ITEM *item) {
+    if (item != NULL) {
+        printf("[%.4f] %s\n", item->similaridade, item->linha);
+    }
 }

@@ -11,7 +11,7 @@ struct ListaSeq {
     size_t capacidade;
 };
 
-ListaSeq *criar_lista_seq(void)
+ListaSeq *lista_seq_criar(void)
 {
     ListaSeq *lista = malloc(sizeof(ListaSeq));
     if (lista == NULL) {

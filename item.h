@@ -33,6 +33,13 @@ const char *item_get_texto(const ITEM *item, const char *campo);
 void item_set_similaridade(ITEM *item, double similaridade);
 double item_get_similaridade(const ITEM *item);
 
+/* Compara dois itens pelo campo indicado, para ordenar ou agrupar.
+   Retorna < 0 se 'a' vem antes de 'b', 0 se são iguais e > 0 se vem depois.
+   "similarity" compara a similaridade; os demais campos são comparados como
+   número, texto ou booleano. Itens com o campo ausente ficam sempre no final,
+   mesmo em ordem decrescente. */
+int item_comparar(const ITEM *a, const ITEM *b, const char *campo, bool decrescente);
+
 // Escreve a linha original seguida do fim de linha da entrada (reader_fim_de_linha)
 void item_escrever(const ITEM *item, const char *fim_de_linha, FILE *saida);
 

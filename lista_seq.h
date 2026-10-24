@@ -9,10 +9,10 @@
 typedef struct ListaSeq ListaSeq;
 
 /* Função chamada para cada item durante a percorrida */
-typedef bool (*ListaSeqVisitante)(const ITEM *item, void *contexto);
+typedef bool (*ListaSeqVisitante)(ITEM *item, void *contexto);
 
 /* Cria uma lista vazia */
-ListaSeq *criar_lista_seq(void);
+ListaSeq *lista_seq_criar(void);
 
 /* Insere um item no final da lista */
 bool lista_seq_inserir(ListaSeq *lista, ITEM *item);

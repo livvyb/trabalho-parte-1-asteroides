@@ -1,5 +1,6 @@
 #include "item.h"
 #include <stdlib.h>
+#include <string.h>
 
 struct item_ {
     char *linha;           // linha original do CSV, sem o fim de linha (saída fiel)
@@ -71,6 +72,62 @@ void item_set_similaridade(ITEM *item, double similaridade) {
 
 double item_get_similaridade(const ITEM *item) {
     return item != NULL ? item->similaridade : 0.0;
+}
+
+// Item sem o campo vai para o final: 'a' ausente -> depois; 'b' ausente -> antes
+static int ausente_por_ultimo(bool tem_a, bool tem_b) {
+    if (tem_a == tem_b) {
+        return 0; // os dois sem o campo: empate
+    }
+    return tem_a ? -1 : 1;
+}
+
+int item_comparar(const ITEM *a, const ITEM *b, const char *campo, bool decrescente) {
+    int resultado;
+    bool tem_a, tem_b;
+    double numero_a, numero_b;
+    const char *texto_a, *texto_b;
+    bool bool_a, bool_b;
+
+    if (a == NULL || b == NULL || campo == NULL) {
+        return 0;
+    }
+
+    if (strcmp(campo, "similarity") == 0) {
+        numero_a = a->similaridade;
+        numero_b = b->similaridade;
+        resultado = (numero_a > numero_b) - (numero_a < numero_b);
+        return decrescente ? -resultado : resultado;
+    }
+
+    // tenta como número, depois como texto e por fim como booleano
+    numero_a = item_get_numero(a, campo, &tem_a);
+    numero_b = item_get_numero(b, campo, &tem_b);
+    if (tem_a || tem_b) {
+        if (!tem_a || !tem_b) {
+            return ausente_por_ultimo(tem_a, tem_b);
+        }
+        resultado = (numero_a > numero_b) - (numero_a < numero_b);
+        return decrescente ? -resultado : resultado;
+    }
+
+    texto_a = item_get_texto(a, campo);
+    texto_b = item_get_texto(b, campo);
+    if (texto_a != NULL || texto_b != NULL) {
+        if (texto_a == NULL || texto_b == NULL) {
+            return ausente_por_ultimo(texto_a != NULL, texto_b != NULL);
+        }
+        resultado = strcmp(texto_a, texto_b);
+        return decrescente ? -resultado : resultado;
+    }
+
+    bool_a = item_get_bool(a, campo, &tem_a);
+    bool_b = item_get_bool(b, campo, &tem_b);
+    if (!tem_a || !tem_b) {
+        return ausente_por_ultimo(tem_a, tem_b); // também cobre campo inexistente
+    }
+    resultado = (int)bool_a - (int)bool_b; // false antes de true
+    return decrescente ? -resultado : resultado;
 }
 
 void item_escrever(const ITEM *item, const char *fim_de_linha, FILE *saida) {

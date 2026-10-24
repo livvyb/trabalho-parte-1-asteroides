@@ -4,41 +4,39 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-typedef void ITEM;
-// todos os campos do .csv 
+/* TAD genérico: representa um registro (uma linha do CSV) sem conhecer o
+   domínio. Os campos são acessados pelo nome, usando as funções fornecidas
+   pelo leitor específico (ex.: reader_nasa). */
+typedef struct item_ ITEM;
+
+// Funções que cada domínio implementa sobre os seus dados.
+// 'ok' indica se o campo existe, é do tipo pedido e não está ausente
 typedef struct {
-    char asteroid_designation[64];
-    char asteroid_fullname[128];
-    char close_approach_date[64];
-    int year;
-    int month;
-    double distance_au;
-    double velocity_km_s;
-    double absolute_magnitude;
-    bool has_absolute_magnitude;
-    int days_until_approach;
-    bool is_past_event;
-    bool is_future_event;
-    double risk_score;
-    int panic_level;
-    char threat_category[64];
-    char panic_verdict[128];
-    bool on_sentry_list;
-    
-    // Dados opcionais
-    bool has_sentry_data;
-    double sentry_impact_prob;
-    double sentry_torino_scale;
-    double sentry_palermo_scale;
-    double sentry_diameter_km;
-} Asteroid;
+    double (*get_numero)(const void *dados, const char *campo, bool *ok);
+    bool (*get_bool)(const void *dados, const char *campo, bool *ok);
+    const char *(*get_texto)(const void *dados, const char *campo); // NULL se ausente
+    void (*apagar)(void *dados);
+} ITEM_OPS;
 
-void free_asteroid(ITEM *item);
-void print_asteroid_csv(const ITEM *item, FILE *out);
+// Cria o item, que passa a ser dono de 'linha' e 'dados' (alocados com malloc)
+ITEM *item_criar(char *linha, void *dados, const ITEM_OPS *ops);
 
-// Acessando conteúdo pelo nome do campo
-double asteroid_get_numeric_field(const Asteroid *ast, const char *field, bool *valid);
-bool asteroid_get_bool_field(const Asteroid *ast, const char *field, bool *valid);
-const char* asteroid_get_string_field(const Asteroid *ast, const char *field);
+// Libera o item, a linha original e os dados do domínio
+void item_apagar(ITEM **item);
+
+// Acesso aos campos pelo nome da coluna
+double item_get_numero(const ITEM *item, const char *campo, bool *ok);
+bool item_get_bool(const ITEM *item, const char *campo, bool *ok);
+const char *item_get_texto(const ITEM *item, const char *campo);
+
+// Similaridade calculada pela consulta (não vai para o arquivo de saída)
+void item_set_similaridade(ITEM *item, double similaridade);
+double item_get_similaridade(const ITEM *item);
+
+// Escreve a linha original seguida do fim de linha da entrada (reader_fim_de_linha)
+void item_escrever(const ITEM *item, const char *fim_de_linha, FILE *saida);
+
+// Imprime o item na saída padrão (depuração)
+void item_imprimir(const ITEM *item);
 
 #endif

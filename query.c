@@ -116,13 +116,13 @@ static bool compara_texto(const char *valor, const char *alvo, OpType op) {
     return false;
 }
 // COMECAMOS A FAZER AS VERIFICAÇÕES UTILIZANDO INFORMACOES DO ASTEROIDS
-static bool avalia_filtro(const Filter *f, const Asteroid *ast) {
+static bool avalia_filtro(const Filter *f, const ITEM *item) {
     bool valido;
     bool valor_bool;
     double valor_num;
     const char *valor_texto;
      // Os campos booleanos sao tratados separadamente.
-    valor_bool = asteroid_get_bool_field(ast, f->field, &valido);
+    valor_bool = item_get_bool(item, f->field, &valido);
     if (valido) {
         if (!f->is_bool){
             return false;
@@ -137,7 +137,7 @@ static bool avalia_filtro(const Filter *f, const Asteroid *ast) {
     }
 
     // Tenta obter o campo como numero.
-    valor_num = asteroid_get_numeric_field(ast, f->field, &valido);
+    valor_num = item_get_numero(item, f->field, &valido);
     if (valido) {
         if (f->is_bool){
             return false;
@@ -146,7 +146,7 @@ static bool avalia_filtro(const Filter *f, const Asteroid *ast) {
     }
 
     // Se nao for numerico nem booleano, tenta como texto.
-    valor_texto = asteroid_get_string_field(ast, f->field);
+    valor_texto = item_get_texto(item, f->field);
     if (valor_texto == NULL || valor_texto[0] == '\0') {
         return false;
     }
@@ -372,13 +372,13 @@ bool carrega_query(const char *filepath, Query *q) {   // filepath -> caminho do
     return true;
 }
 
-bool avalia_query(const Query *q, const Asteroid *ast,
+bool avalia_query(const Query *q, const ITEM *item,
                   double *out_similarity) {
     double soma_ponderada = 0.0;
     double soma_pesos = 0.0;
     double similaridade = 1.0;
 
-    if (q == NULL || ast == NULL || out_similarity == NULL) {
+    if (q == NULL || item == NULL || out_similarity == NULL) {
         return false;
     }
 
@@ -387,7 +387,7 @@ bool avalia_query(const Query *q, const Asteroid *ast,
     // Todos os filtros sao obrigatorios.
 
     for (int i = 0; i < q->filter_count; i++) {
-        if (!avalia_filtro(&q->filters[i], ast)) {
+        if (!avalia_filtro(&q->filters[i], item)) {
             return false;
         }
     }
@@ -401,7 +401,7 @@ bool avalia_query(const Query *q, const Asteroid *ast,
         double sim;
         const Sim *s = &q->sims[i];
 
-        valor = asteroid_get_numeric_field(ast, s->field, &valido);
+        valor = item_get_numero(item, s->field, &valido);
 
         if (!valido) {
             return false;

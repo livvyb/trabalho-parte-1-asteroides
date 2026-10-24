@@ -1,288 +1,196 @@
 #include "reader.h"
+#include "reader_nasa.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-/* Campos do Asteroid, na ordem usada por item.h. */
-enum {
-    COL_DESIGNATION,
-    COL_FULLNAME,
-    COL_DATE,
-    COL_YEAR,
-    COL_MONTH,
-    COL_DISTANCE,
-    COL_VELOCITY,
-    COL_MAGNITUDE,
-    COL_DAYS,
-    COL_PAST,
-    COL_FUTURE,
-    COL_RISK,
-    COL_PANIC,
-    COL_CATEGORY,
-    COL_VERDICT,
-    COL_SENTRY,
-    COL_IMPACT_PROB,
-    COL_TORINO,
-    COL_PALERMO,
-    COL_DIAMETER,
-    TOTAL_CAMPOS
+struct reader_ {
+    FILE *arquivo;
+    const LEITOR *leitor;          // leitor escolhido em --reader
+    const char *fim_de_linha;      // "\r\n" ou "\n", igual ao da entrada
+    long numero_linha;             // usado nos avisos (cabeçalho = linha 1)
+    long linhas_puladas;
+    char cabecalho[READER_MAX_LINHA];
+    char linha[READER_MAX_LINHA];  // linha original, que vai para o item
+    char campos[READER_MAX_LINHA]; // cópia da linha, separada em campos
 };
 
-/* Nomes das colunas que o leitor espera encontrar. */
-static const char *campos_esperados[TOTAL_CAMPOS] = {
-    "asteroid_designation",
-    "asteroid_fullname",
-    "close_approach_date",
-    "year",
-    "month",
-    "distance_au",
-    "velocity_km_s",
-    "absolute_magnitude",
-    "days_until_approach",
-    "is_past_event",
-    "is_future_event",
-    "risk_score",
-    "panic_level",
-    "threat_category",
-    "panic_verdict",
-    "on_sentry_list",
-    "sentry_impact_prob",
-    "sentry_torino_scale",
-    "sentry_palermo_scale",
-    "sentry_diameter_km"
-};
+// Leitores disponíveis em --reader (na Parte 2, basta acrescentar o novo aqui)
+static const LEITOR *LEITORES[] = { &LEITOR_NASA };
 
-/* Retira espaços do começo e do final. */
-static char *cortar(char *texto) {
-    char *fim;
-    while (isspace((unsigned char)*texto)) {
-        texto++;
-    }
-    if (*texto == '\0') {
-        return texto;
-    }
-    fim = texto + strlen(texto) - 1;
-    while (fim > texto && isspace((unsigned char)*fim)) {
-        *fim = '\0';
-        fim--;
-    }
-    return texto;
-}
-
-/* Converte texto para inteiro. */
-static bool le_int(const char *texto, int *resultado) {
-    char *fim;
-    long valor;
-
-    if (texto == NULL || *texto == '\0') {
-        return false;
-    }
-    valor = strtol(texto, &fim, 10);
-    while (isspace((unsigned char)*fim)) {
-        fim++;
-    }
-    if (*fim != '\0') {
-        return false;
-    }
-    *resultado = (int)valor;
-    return true;
-}
-
-/* Converte texto para double. */
-static bool le_double(const char *texto, double *resultado) {
-    char *fim;
-    double valor;
-    if (texto == NULL || *texto == '\0') {
-        return false;
-    }
-    valor = strtod(texto, &fim);
-    while (isspace((unsigned char)*fim)) {
-        fim++;
-    }
-    if (*fim != '\0') {
-        return false;
-    }
-    *resultado = valor;
-    return true;
-}
-
-/* Converte texto para booleano. */
-static bool le_bool(const char *texto, bool *resultado) {
-    if (strcmp(texto, "true") == 0 ||
-        strcmp(texto, "True") == 0 ||
-        strcmp(texto, "TRUE") == 0 ||
-        strcmp(texto, "1") == 0) {
-        *resultado = true;
-        return true;
-    }
-
-    if (strcmp(texto, "false") == 0 ||
-        strcmp(texto, "False") == 0 ||
-        strcmp(texto, "FALSE") == 0 ||
-        strcmp(texto, "0") == 0) {
-        *resultado = false;
-        return true;
-    }
-
-    return false;
-}
-
-/* Copia um texto sem ultrapassar o tamanho do destino. */
-static void copia(char *destino, size_t tamanho,
-                  const char *origem) {
-    if (tamanho == 0) {
-        return;
-    }
-    strncpy(destino, origem, tamanho - 1);
-    destino[tamanho - 1] = '\0';
-}
-
-/* Separa uma linha CSV simples em campos.
-   Esta versão inicial não trata vírgulas dentro de aspas. */
-static int separa_csv(char *linha, char *campos[], int capacidade, char delimitador) {
+/* Separa o texto em campos trocando o delimitador por '\0'. Entre aspas o
+   delimitador é ignorado (ex.: "Worth a tweet, not worth a bunker.") e as
+   aspas são removidas. Campos vazios são mantidos.
+   Retorna a quantidade de campos, ou -1 se as aspas não fecharem. */
+static int separa_campos(char *texto, char delimitador, char **campos, int maximo) {
+    char *escrita = texto; // nunca passa da leitura, então dá para reaproveitar o texto
+    bool entre_aspas = false;
     int quantidade = 0;
-    char separador[2] = {delimitador, '\0'};
-    char *token = strtok(linha, separador);
 
-    while (token != NULL && quantidade < capacidade) {
-        campos[quantidade++] = trim(token);
-        token = strtok(NULL, separador);
-    }
-
-    return quantidade;
-}
-
-/* Procura uma coluna pelo nome no cabeçalho. */
-static int procura_coluna(const Reader *reader, const char *nome) {
-    for (int i = 0; i < reader->quantidade_colunas; i++) {
-        if (strcmp(reader->nomes_colunas[i], nome) == 0) {
-            return i;
+    campos[quantidade++] = texto;
+    for (char *leitura = texto; *leitura != '\0'; leitura++) {
+        if (*leitura == '"') {
+            entre_aspas = !entre_aspas;
+        } else if (*leitura == delimitador && !entre_aspas) {
+            *escrita++ = '\0'; // fecha o campo atual
+            if (quantidade == maximo) {
+                return -1;
+            }
+            campos[quantidade++] = escrita;
+        } else {
+            *escrita++ = *leitura;
         }
     }
+    *escrita = '\0';
 
-    return -1;
+    return entre_aspas ? -1 : quantidade;
 }
 
-/* Abre o CSV e identifica as colunas. */
-bool reader_abre(Reader *reader, const char *caminho) {
-    char linha[READER_MAX_LINHA];
-    char *campos[READER_MAX_COLUNAS];
-    if (reader == NULL || caminho == NULL) {
+// Lê uma linha e remove o "\r\n" (ou "\n"). Retorna false no fim do arquivo.
+// Se 'tinha_cr' não for NULL, informa se a linha terminava com '\r'
+static bool le_linha(FILE *arquivo, char *destino, bool *tinha_cr) {
+    size_t fim;
+
+    if (fgets(destino, READER_MAX_LINHA, arquivo) == NULL) {
         return false;
     }
-    memset(reader, 0, sizeof(*reader));
-    reader->arquivo = fopen(caminho, "r");
-    if (reader->arquivo == NULL) {
-        return false;
+    fim = strcspn(destino, "\r\n");
+    if (tinha_cr != NULL) {
+        *tinha_cr = destino[fim] == '\r';
     }
-    if (fgets(linha, sizeof(linha), reader->arquivo) == NULL) {
-        reader_fecha(reader);
-        return false;
-    }
-
-    copia(reader->cabecalho, sizeof(reader->cabecalho), linha);
-
-    if (strchr(linha, ';') != NULL &&
-        strchr(linha, ',') == NULL) {
-        reader->delimitador = ';';
-    } else {
-        reader->delimitador = ',';
-    }
-
-    linha[strcspn(linha, "\r\n")] = '\0';
-
-    reader->quantidade_colunas = separa_csv(linha, campos, READER_MAX_COLUNAS, reader->delimitador);
-
-    if (reader->quantidade_colunas <= 0) {
-        reader_fecha(reader);
-        return false;
-    }
-
-    for (int i = 0; i < reader->quantidade_colunas; i++) {
-        copia(reader->nomes_colunas[i],
-              sizeof(reader->nomes_colunas[i]), campos[i]);
-    }
-
-    for (int i = 0; i < TOTAL_CAMPOS; i++) {
-        reader->indices[i] =
-            procura_coluna(reader, campos_esperados[i]);
-
-        /* magnitude e dados Sentry podem estar vazios
-           em determinados registros, mas a coluna precisa
-           existir no cabeçalho esperado. */
-        if (reader->indices[i] == -1) {
-            reader_fecha(reader);
-            return false;
-        }
-    }
-
+    destino[fim] = '\0';
     return true;
 }
 
-/* Lê um registro e o converte para Asteroid. */
-bool reader_proximo(Reader *reader, Asteroid *asteroid) {
-    char linha[READER_MAX_LINHA];
-    char copia_linha[READER_MAX_LINHA];
-    char *campos[READER_MAX_COLUNAS];
+// Mostra o erro, libera o que já foi aberto e retorna NULL
+static READER *falha_ao_abrir(READER *reader, const char *mensagem, const char *detalhe) {
+    fprintf(stderr, "erro: %s '%s'\n", mensagem, detalhe);
+    reader_fechar(&reader);
+    return NULL;
+}
+
+READER *reader_abrir(const char *nome, const char *caminho) {
+    READER *reader;
+    char *colunas[READER_MAX_COLUNAS];
+    bool tinha_cr;
     int quantidade;
 
-    if (reader == NULL || reader->arquivo == NULL || asteroid == NULL) {
-        return false;
+    if (nome == NULL || caminho == NULL) {
+        return NULL;
+    }
+    reader = calloc(1, sizeof(READER));
+    if (reader == NULL) {
+        return NULL;
     }
 
-    while (fgets(linha, sizeof(linha), reader->arquivo) != NULL) {
-        linha[strcspn(linha, "\r\n")] = '\0';
-
-        if (linha[0] == '\0') {
-            continue;
+    // procura o leitor pelo nome
+    for (size_t i = 0; i < sizeof(LEITORES) / sizeof(LEITORES[0]); i++) {
+        if (strcmp(LEITORES[i]->nome, nome) == 0) {
+            reader->leitor = LEITORES[i];
         }
-        copia(copia_linha, sizeof(copia_linha), linha);
-        quantidade = separa_csv( copia_linha, campos, READER_MAX_COLUNAS, reader->delimitador);
-        if (quantidade != reader->quantidade_colunas) {
-            return false;
-        }
-
-        memset(asteroid, 0, sizeof(*asteroid));
-
-        copia(asteroid->asteroid_designation, sizeof(asteroid->asteroid_designation), campos[reader->indices[COL_DESIGNATION]]);
-        copia(asteroid->asteroid_fullname, sizeof(asteroid->asteroid_fullname), campos[reader->indices[COL_FULLNAME]]);
-        copia(asteroid->close_approach_date, sizeof(asteroid->close_approach_date), campos[reader->indices[COL_DATE]]);
-
-        if (!le_int(campos[reader->indices[COL_YEAR]], &asteroid->year) ||
-            !le_int(campos[reader->indices[COL_MONTH]], &asteroid->month) ||
-            !le_double(campos[reader->indices[COL_DISTANCE]], &asteroid->distance_au) ||
-            !le_double(campos[reader->indices[COL_VELOCITY]],  &asteroid->velocity_km_s) ||
-            !le_int(campos[reader->indices[COL_DAYS]], &asteroid->days_until_approach) ||
-            !le_double(campos[reader->indices[COL_RISK]], &asteroid->risk_score) ||
-            !le_int(campos[reader->indices[COL_PANIC]], &asteroid->panic_level)) {
-            return false;
-        }
-
-        asteroid->has_absolute_magnitude =
-            le_double(campos[reader->indices[COL_MAGNITUDE]], &asteroid->absolute_magnitude);
-
-        if (!le_bool(campos[reader->indices[COL_PAST]], &asteroid->is_past_event) ||
-            !le_bool(campos[reader->indices[COL_FUTURE]], &asteroid->is_future_event) ||
-            !le_bool(campos[reader->indices[COL_SENTRY]], &asteroid->on_sentry_list)) {
-            return false;
-        }
-
-        copia(asteroid->threat_category, sizeof(asteroid->threat_category), campos[reader->indices[COL_CATEGORY]]);
-
-        copia(asteroid->panic_verdict, sizeof(asteroid->panic_verdict), campos[reader->indices[COL_VERDICT]]);
-
-        asteroid->has_sentry_data =
-            le_double(campos[reader->indices[COL_IMPACT_PROB]], &asteroid->sentry_impact_prob) &&
-            le_double(campos[reader->indices[COL_TORINO]], &asteroid->sentry_torino_scale) &&
-            le_double(campos[reader->indices[COL_PALERMO]], &asteroid->sentry_palermo_scale) &&
-            le_double(campos[reader->indices[COL_DIAMETER]], &asteroid->sentry_diameter_km);
-        return true;
+    }
+    if (reader->leitor == NULL) {
+        return falha_ao_abrir(reader, "leitor desconhecido", nome);
     }
 
-    return false;
+    reader->arquivo = fopen(caminho, "r");
+    if (reader->arquivo == NULL) {
+        return falha_ao_abrir(reader, "nao foi possivel abrir", caminho);
+    }
+
+    if (!le_linha(reader->arquivo, reader->cabecalho, &tinha_cr)) {
+        return falha_ao_abrir(reader, "arquivo vazio", caminho);
+    }
+    reader->fim_de_linha = tinha_cr ? "\r\n" : "\n";
+    reader->numero_linha = 1;
+
+    // o cabeçalho precisa ter as colunas esperadas pelo leitor, na mesma ordem
+    strcpy(reader->campos, reader->cabecalho);
+    quantidade = separa_campos(reader->campos, reader->leitor->delimitador,
+                               colunas, READER_MAX_COLUNAS);
+    if (quantidade != reader->leitor->quantidade_colunas) {
+        return falha_ao_abrir(reader, "numero de colunas inesperado em", caminho);
+    }
+    for (int i = 0; i < quantidade; i++) {
+        if (strcmp(colunas[i], reader->leitor->colunas[i]) != 0) {
+            return falha_ao_abrir(reader, "coluna esperada no cabecalho:",
+                                  reader->leitor->colunas[i]);
+        }
+    }
+
+    return reader;
 }
 
-/* Fecha o arquivo aberto. */
-void reader_fecha(Reader *reader) {
-    if (reader != NULL && reader->arquivo != NULL) {
-        fclose(reader->arquivo);
-        reader->arquivo = NULL;
+// Conta a linha pulada e avisa no stderr
+static void avisa_linha_invalida(READER *reader, const char *motivo) {
+    reader->linhas_puladas++;
+    fprintf(stderr, "aviso: linha %ld ignorada (%s)\n", reader->numero_linha, motivo);
+}
+
+ITEM *reader_proximo(READER *reader) {
+    char *campos[READER_MAX_COLUNAS];
+
+    if (reader == NULL) {
+        return NULL;
+    }
+
+    // repete até achar uma linha válida ou chegar ao fim do arquivo
+    while (le_linha(reader->arquivo, reader->linha, NULL)) {
+        void *dados;
+        char *copia;
+        ITEM *item;
+
+        reader->numero_linha++;
+        if (reader->linha[0] == '\0') {
+            continue; // linha em branco
+        }
+
+        strcpy(reader->campos, reader->linha);
+        if (separa_campos(reader->campos, reader->leitor->delimitador, campos,
+                          READER_MAX_COLUNAS) != reader->leitor->quantidade_colunas) {
+            avisa_linha_invalida(reader, "numero de colunas ou aspas incorretos");
+            continue;
+        }
+
+        dados = reader->leitor->converter(campos);
+        if (dados == NULL) {
+            avisa_linha_invalida(reader, "valor invalido");
+            continue;
+        }
+
+        // o item guarda uma cópia da linha original, para a saída ficar idêntica
+        copia = malloc(strlen(reader->linha) + 1);
+        item = (copia != NULL) ? item_criar(strcpy(copia, reader->linha), dados, reader->leitor->ops) : NULL;
+        if (item == NULL) {
+            free(copia);
+            reader->leitor->ops->apagar(dados);
+            fprintf(stderr, "erro: memoria insuficiente\n");
+            return NULL;
+        }
+        return item;
+    }
+
+    return NULL;
+}
+
+const char *reader_cabecalho(const READER *reader) {
+    return reader != NULL ? reader->cabecalho : NULL;
+}
+
+const char *reader_fim_de_linha(const READER *reader) {
+    return reader != NULL ? reader->fim_de_linha : "\n";
+}
+
+long reader_linhas_puladas(const READER *reader) {
+    return reader != NULL ? reader->linhas_puladas : 0;
+}
+
+void reader_fechar(READER **reader) {
+    if (reader != NULL && *reader != NULL) {
+        if ((*reader)->arquivo != NULL) {
+            fclose((*reader)->arquivo);
+        }
+        free(*reader);
+        *reader = NULL;
     }
 }

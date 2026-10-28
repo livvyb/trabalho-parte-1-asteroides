@@ -1,36 +1,26 @@
-
+# Compilador e Flags obrigatórias
 CC = gcc
-CFLAGS = -Wall -Wextra -pedantic -std=c11
-OBJETOS = main.o cli.o item.o query.o reader.o reader_nasa.o
-EXECUTAVEL = trabalho
+CFLAGS = -Wall -Wextra -pedantic -g -O2 
 
-all: $(EXECUTAVEL)
+# Executável final
+TARGET = trabalho
 
-$(EXECUTAVEL): $(OBJETOS)
-	$(CC) $(CFLAGS) -o $(EXECUTAVEL) $(OBJETOS) -lm
+# Todos os arquivos objeto
+OBJS = cli.o estrutura.o item.o query.o reader.o reader_nasa.o \
+       lista_seq.o lista_enc.o lista_cabeca.o lista_ord.o \
+       lista_gen.o lista_cruz.o pilha.o fila.o main.o
 
-main.o: main.c cli.h item.h query.h reader.h
-	$(CC) $(CFLAGS) -c main.c -o main.o
+# Regra principal
+all: $(TARGET)
 
-cli.o: cli.c cli.h
-	$(CC) $(CFLAGS) -c cli.c -o cli.o
+# Regra de linkagem (Gera o executável 'trabalho')
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) -lm
 
-item.o: item.c item.h
-	$(CC) $(CFLAGS) -c item.c -o item.o
+# Regras de compilação genéricas para transformar .c em .o
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-query.o: query.c query.h item.h
-	$(CC) $(CFLAGS) -c query.c -o query.o
-
-reader.o: reader.c reader.h reader_nasa.h item.h
-	$(CC) $(CFLAGS) -c reader.c -o reader.o
-
-reader_nasa.o: reader_nasa.c reader_nasa.h reader.h item.h
-	$(CC) $(CFLAGS) -c reader_nasa.c -o reader_nasa.o
-
-run: $(EXECUTAVEL)
-	./$(EXECUTAVEL) $(ARGS)
-
+# Regra para limpar os compilados
 clean:
-	rm -f $(OBJETOS) $(EXECUTAVEL)
-
-.PHONY: all run clean
+	rm -f $(OBJS) $(TARGET)

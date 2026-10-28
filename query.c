@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 // interpreta e armazena os comandos 
 #include "query.h"
 #include <stdio.h>
@@ -121,36 +122,30 @@ static bool avalia_filtro(const Filter *f, const ITEM *item) {
     bool valor_bool;
     double valor_num;
     const char *valor_texto;
-     // Os campos booleanos sao tratados separadamente.
+
+    // Campo booleano: o alvo precisa ser true/false/1/0
     valor_bool = item_get_bool(item, f->field, &valido);
     if (valido) {
-        if (!f->is_bool){
+        if (!f->is_bool) {
             return false;
-            // se o campo for booleano mas o valor armazenado nao, é rejeitado
         }
-        return compara_numero(
-            valor_bool ? 1.0 : 0.0,
-            f->target_bool ? 1.0 : 0.0,
-            f->op
-            // converte booleano em número para reaproveitar funcao de comparaçao
-        );
+        return compara_numero(valor_bool ? 1.0 : 0.0, f->target_bool ? 1.0 : 0.0, f->op);
     }
 
-    // Tenta obter o campo como numero.
+    // Campo numérico: o alvo precisa ser um número (target_num é NAN caso contrário)
     valor_num = item_get_numero(item, f->field, &valido);
     if (valido) {
-        if (f->is_bool){
+        if (isnan(f->target_num)) {
             return false;
         }
         return compara_numero(valor_num, f->target_num, f->op);
     }
 
-    // Se nao for numerico nem booleano, tenta como texto.
+    // Campo textual: compara com o texto original do alvo (inclusive "0" e "1")
     valor_texto = item_get_texto(item, f->field);
     if (valor_texto == NULL || valor_texto[0] == '\0') {
         return false;
     }
-    if (f->is_bool) return false;
     return compara_texto(valor_texto, f->target_str, f->op);
 }
 // abre q1.txt, le cada linha, identifica o comando e armazena informacoes na estrutura query
@@ -222,17 +217,10 @@ bool carrega_query(const char *filepath, Query *q) {   // filepath -> caminho do
             copia_texto(f->field, sizeof(f->field), campo);
             copia_texto(f->target_str, sizeof(f->target_str), valor);
 
-            if (converte_bool(valor, &f->target_bool)) {
-                f->is_bool = true;
-            } else {
-                f->is_bool = false;
-
-            // O valor pode ser numerico ou textual.
-            // Campos numericos serao reconhecidos na avaliacao.
-
-                if (!converte_numero(valor, &f->target_num)) {
-                    f->target_num = 0.0;
-                }
+            // O alvo é guardado nas três formas; a avaliação usa a que combina com o tipo do campo.
+            f->is_bool = converte_bool(valor, &f->target_bool);
+            if (!converte_numero(valor, &f->target_num)) {
+                f->target_num = NAN; // alvo não numérico
             }
 
             q->filter_count++;
@@ -276,7 +264,7 @@ bool carrega_query(const char *filepath, Query *q) {   // filepath -> caminho do
                 !converte_numero(alvo, &s->target) ||
                 !converte_numero(tolerancia, &s->tolerance) ||
                 !converte_numero(peso, &s->weight) ||
-                s->tolerance < 0.0 ||   // precisa ser maior que zero pois vai dividir na formula da similaridade
+                s->tolerance <= 0.0 ||   // precisa ser maior que zero pois vai dividir na formula da similaridade
                 s->weight < 0.0) {
                 fclose(arquivo);
                 return false;

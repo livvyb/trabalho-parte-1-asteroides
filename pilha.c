@@ -1,137 +1,64 @@
 #include "pilha.h"
-
-#include <stdio.h>
 #include <stdlib.h>
 
-typedef struct no NO;
-
-struct no {
+typedef struct no_pilha {
     ITEM *item;
-    NO *anterior;
-};
+    struct no_pilha *prox;
+} NoPilha;
 
 struct pilha {
-    NO *topo;
-    int tamanho;
+    NoPilha *topo;
+    size_t tamanho;
 };
 
 PILHA *pilha_criar(void) {
-    PILHA *pilha = malloc(sizeof(PILHA));
-
-    if (pilha != NULL) {
-        pilha->topo = NULL;
-        pilha->tamanho = 0;
+    PILHA *p = malloc(sizeof(PILHA));
+    if (p != NULL) {
+        p->topo = NULL;
+        p->tamanho = 0;
     }
-
-    return pilha;
+    return p;
 }
 
-void pilha_apagar(PILHA **pilha) {
-    NO *atual;
-
-    if (pilha == NULL || *pilha == NULL) {
-        return;
-    }
-
-    atual = (*pilha)->topo;
-    while (atual != NULL) {
-        NO *anterior = atual->anterior;
-        item_apagar(&atual->item);
-        free(atual);
-        atual = anterior;
-    }
-
-    free(*pilha);
-    *pilha = NULL;
-}
-
-bool pilha_vazia(PILHA *pilha) {
-    return pilha != NULL && pilha->topo == NULL;
-}
-
-bool pilha_cheia(PILHA *pilha) {
-    (void) pilha;
-    return false;
-}
-
-int pilha_tamanho(PILHA *pilha) {
-    return pilha != NULL ? pilha->tamanho : -1;
-}
-
-ITEM *pilha_topo(PILHA *pilha) {
-    if (pilha == NULL || pilha_vazia(pilha)) {
-        return NULL;
-    }
-
-    return pilha->topo->item;
-}
-
-bool pilha_empilhar(PILHA *pilha, ITEM *item) {
-    NO *novo;
-
-    if (pilha == NULL || item == NULL) {
-        return false;
-    }
-
-    novo = malloc(sizeof(NO));
-    if (novo == NULL) {
-        return false;
-    }
-
+bool pilha_inserir(PILHA *p, ITEM *item) {
+    if (p == NULL || item == NULL) return false;
+    
+    NoPilha *novo = malloc(sizeof(NoPilha));
+    if (novo == NULL) return false;
+    
     novo->item = item;
-    novo->anterior = pilha->topo;
-    pilha->topo = novo;
-    pilha->tamanho++;
+    novo->prox = p->topo;
+    p->topo = novo;
+    p->tamanho++;
+    
     return true;
 }
 
-ITEM *pilha_desempilhar(PILHA *pilha) {
-    NO *removido;
-    ITEM *item;
-
-    if (pilha == NULL || pilha_vazia(pilha)) {
-        return NULL;
-    }
-
-    removido = pilha->topo;
-    item = removido->item;
-    pilha->topo = removido->anterior;
-    pilha->tamanho--;
-    free(removido);
-    return item;
+size_t pilha_tamanho(const PILHA *p) {
+    return p != NULL ? p->tamanho : 0;
 }
 
-void pilha_imprimir(PILHA *pilha) {
-    NO *atual;
-
-    if (pilha == NULL) {
-        return;
+bool pilha_percorrer(const PILHA *p, VisitanteItem visitante, void *contexto) {
+    if (p == NULL || visitante == NULL) return false;
+    
+    for (NoPilha *atual = p->topo; atual != NULL; atual = atual->prox) {
+        if (!visitante(atual->item, contexto)) {
+            return false;
+        }
     }
-
-    printf("Topo -> ");
-    atual = pilha->topo;
-    while (atual != NULL) {
-        printf("%d ", item_get_chave(atual->item));
-        atual = atual->anterior;
-    }
-    printf("<- Base\n");
+    return true;
 }
 
-void pilha_inverter(PILHA *pilha) {
-    NO *atual;
-    NO *anterior = NULL;
-
-    if (pilha == NULL) {
-        return;
+void pilha_destruir(PILHA **p) {
+    if (p != NULL && *p != NULL) {
+        NoPilha *atual = (*p)->topo;
+        while (atual != NULL) {
+            NoPilha *prox = atual->prox;
+            item_apagar(&(atual->item));
+            free(atual);
+            atual = prox;
+        }
+        free(*p);
+        *p = NULL;
     }
-
-    atual = pilha->topo;
-    while (atual != NULL) {
-        NO *proximo = atual->anterior;
-        atual->anterior = anterior;
-        anterior = atual;
-        atual = proximo;
-    }
-
-    pilha->topo = anterior;
 }

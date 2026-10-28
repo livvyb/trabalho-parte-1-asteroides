@@ -1,19 +1,17 @@
-#ifndef LISTA_H
-#define LISTA_H
+#ifndef LISTA_ENC_H
+#define LISTA_ENC_H
 
-#include <stdbool.h>
 #include "item.h"
+#include "estrutura.h"
+#include <stdbool.h>
+#include <stddef.h>
 
-typedef struct lista_ LISTA;
+typedef struct ListaEnc ListaEnc;
 
-LISTA *lista_criar(bool ordenada);
-void lista_apagar(LISTA **lista);
-bool lista_inserir(LISTA *lista, ITEM *item);
-ITEM *lista_busca(const LISTA *lista, int chave);
-ITEM *lista_remover(LISTA *lista, int chave);
-int lista_tamanho(const LISTA *lista);
-bool lista_vazia(const LISTA *lista);
-bool lista_cheia(const LISTA *lista);
-void lista_imprimir(const LISTA *lista);
+ListaEnc *criar_lista_enc(void);
+bool lista_enc_inserir(ListaEnc *lista, ITEM *item);
+size_t lista_enc_tamanho(const ListaEnc *lista);
+bool lista_enc_percorrer(const ListaEnc *lista, VisitanteItem visitante, void *contexto);
+void lista_enc_destruir(ListaEnc *lista);
 
 #endif

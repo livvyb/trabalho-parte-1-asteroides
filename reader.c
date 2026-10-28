@@ -46,20 +46,35 @@ static int separa_campos(char *texto, char delimitador, char **campos, int maxim
     return entre_aspas ? -1 : quantidade;
 }
 
-// Lê uma linha e remove o "\r\n" (ou "\n"). Retorna false no fim do arquivo.
+// Lê uma linha e remove o "\r\n" (ou "\n").
+// Retorna 1 se leu, 0 no fim do arquivo, -1 se a linha excede READER_MAX_LINHA
+// (nesse caso o resto da linha é descartado).
 // Se 'tinha_cr' não for NULL, informa se a linha terminava com '\r'
-static bool le_linha(FILE *arquivo, char *destino, bool *tinha_cr) {
+static int le_linha(FILE *arquivo, char *destino, bool *tinha_cr) {
     size_t fim;
 
     if (fgets(destino, READER_MAX_LINHA, arquivo) == NULL) {
-        return false;
+        return 0;
     }
     fim = strcspn(destino, "\r\n");
+    if (destino[fim] == '\0' && fim == READER_MAX_LINHA - 1) {
+        int c = getc(arquivo);
+        if (c != EOF && c != '\n') {
+            while (c != EOF && c != '\n') {
+                c = getc(arquivo);
+            }
+            destino[0] = '\0';
+            if (tinha_cr != NULL) {
+                *tinha_cr = false;
+            }
+            return -1;
+        }
+    }
     if (tinha_cr != NULL) {
         *tinha_cr = destino[fim] == '\r';
     }
     destino[fim] = '\0';
-    return true;
+    return 1;
 }
 
 // Mostra o erro, libera o que já foi aberto e retorna NULL
@@ -87,6 +102,7 @@ READER *reader_abrir(const char *nome, const char *caminho) {
     for (size_t i = 0; i < sizeof(LEITORES) / sizeof(LEITORES[0]); i++) {
         if (strcmp(LEITORES[i]->nome, nome) == 0) {
             reader->leitor = LEITORES[i];
+            break;
         }
     }
     if (reader->leitor == NULL) {
@@ -98,7 +114,7 @@ READER *reader_abrir(const char *nome, const char *caminho) {
         return falha_ao_abrir(reader, "nao foi possivel abrir", caminho);
     }
 
-    if (!le_linha(reader->arquivo, reader->cabecalho, &tinha_cr)) {
+    if (le_linha(reader->arquivo, reader->cabecalho, &tinha_cr) <= 0) {
         return falha_ao_abrir(reader, "arquivo vazio", caminho);
     }
     reader->fim_de_linha = tinha_cr ? "\r\n" : "\n";
@@ -129,18 +145,23 @@ static void avisa_linha_invalida(READER *reader, const char *motivo) {
 
 ITEM *reader_proximo(READER *reader) {
     char *campos[READER_MAX_COLUNAS];
+    int estado;
 
     if (reader == NULL) {
         return NULL;
     }
 
     // repete até achar uma linha válida ou chegar ao fim do arquivo
-    while (le_linha(reader->arquivo, reader->linha, NULL)) {
+    while ((estado = le_linha(reader->arquivo, reader->linha, NULL)) != 0) {
         void *dados;
         char *copia;
         ITEM *item;
 
         reader->numero_linha++;
+        if (estado < 0) {
+            avisa_linha_invalida(reader, "linha maior que o limite");
+            continue;
+        }
         if (reader->linha[0] == '\0') {
             continue; // linha em branco
         }

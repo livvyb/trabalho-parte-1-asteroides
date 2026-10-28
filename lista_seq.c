@@ -75,10 +75,9 @@ size_t lista_seq_tamanho(const ListaSeq *lista)
     }
     return lista->tamanho;
 }
-
 bool lista_seq_percorrer(
     const ListaSeq *lista,
-    ListaSeqVisitante visitante,
+    VisitanteItem visitante, // Substituído aqui
     void *contexto
 )
 {

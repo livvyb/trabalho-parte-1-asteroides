@@ -1,0 +1,11 @@
+asteroid_designation,asteroid_fullname,close_approach_date,year,month,distance_au,velocity_km_s,absolute_magnitude,days_until_approach,is_past_event,is_future_event,risk_score,panic_level,threat_category,panic_verdict,on_sentry_list,sentry_impact_prob,sentry_torino_scale,sentry_palermo_scale,sentry_diameter_km
+2022 EP,       (2022 EP),2037-09-12 06:41:00,2037,9,0.0129510402199839,15.11923228173,23.22,4345,False,True,0.6981764553971126,7,CONCERN,Time to learn survival skills?,False,,,,
+2023 SL5,       (2023 SL5),2034-01-22 20:59:00,2034,1,0.0711680305324064,14.9406630533833,28.79,3017,False,True,0.6954034134244244,7,CONCERN,Time to learn survival skills?,True,4.7098798e-05,0.0,-6.34,0.0061
+2025 MG89,       (2025 MG89),2040-07-20 08:58:00,2040,7,0.0075463619620697,15.5193634263242,23.86,5387,False,True,0.6994970028537063,7,CONCERN,Time to learn survival skills?,False,,,,
+2023 SB1,       (2023 SB1),2028-02-24 07:34:00,2028,2,0.0349110406990119,15.0233431448065,28.26,857,False,True,0.6919033738704001,7,CONCERN,Time to learn survival skills?,False,,,,
+2019 BV2,       (2019 BV2),2064-08-02 23:41:00,2064,8,0.0073850253896197,15.429949728757,25.5,14167,False,True,0.7034892222102678,7,CONCERN,Time to learn survival skills?,True,1.4958e-08,0.0,-8.35,0.027
+2021 ER4,       (2021 ER4),2030-06-12 04:35:00,2030,6,0.0725855764768103,14.7374716266372,27.12,1696,False,True,0.7060366560156396,7,CONCERN,Time to learn survival skills?,True,6.255e-07,0.0,-7.47,0.013
+2024 DM,       (2024 DM),2033-02-06 00:47:00,2033,2,0.0259364722776816,15.036689431058,24.96,2666,False,True,0.6901553065145438,7,CONCERN,Time to learn survival skills?,False,,,,
+2020 TK,       (2020 TK),2029-10-03 19:40:00,2029,10,0.0319754452841978,15.2745385272486,24.8,1445,False,True,0.6925402290782259,7,CONCERN,Time to learn survival skills?,False,,,,
+2016 CD31,       (2016 CD31),2036-09-28 05:01:00,2036,9,0.0117970683704987,14.22306809144,26.9,3996,False,True,0.700056225736734,7,CONCERN,Time to learn survival skills?,False,,,,
+29075, 29075 (1950 DA),2032-03-02 06:44:00,2032,3,0.0757521652886275,15.5803408387534,17.28,2325,False,True,0.6968209097467207,7,CONCERN,Time to learn survival skills?,True,0.0003848,,-0.92,1.3

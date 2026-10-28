@@ -85,10 +85,9 @@ static bool le_texto(const char *texto, char *destino, size_t tamanho, bool *pre
         texto++;
     }
     *presente = texto[0] != '\0';
-    if (strlen(texto) >= tamanho) {
-        return false;
-    }
-    strcpy(destino, texto);
+    // Texto maior que o buffer é truncado (a saída usa a linha original, então nada é perdido)
+    strncpy(destino, texto, tamanho - 1);
+    destino[tamanho - 1] = '\0';
     return true;
 }
 
@@ -170,7 +169,7 @@ static void *nasa_converter(char **campos) {
 // Retorna a coluna com esse nome, ou -1 se não existir
 static int procura_campo(const char *nome) {
     for (int i = 0; i < TOTAL_CAMPOS; i++) {
-        if (strcmp(COLUNAS[i], nome) == 0) {
+        if (COLUNAS[i][0] == nome[0] && strcmp(COLUNAS[i], nome) == 0) {
             return i;
         }
     }

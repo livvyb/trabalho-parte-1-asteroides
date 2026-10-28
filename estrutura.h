@@ -1,7 +1,7 @@
 
 #ifndef ESTRUTURA_H
 #define ESTRUTURA_H
-
+#include "query.h"
 #include "item.h"
 #include <stdbool.h>
 #include <stddef.h>
@@ -19,19 +19,15 @@ typedef enum {
 
 typedef struct Estrutura Estrutura;
 
-typedef bool (*VisitanteItem)(const ITEM *item, void *contexto);
+typedef bool (*VisitanteItem)(const ITEM *item, void *contexto);  //callback - passagem de estado e controle de parada
 
-Estrutura *estrutura_criar(TipoEstrutura tipo);
+Estrutura *estrutura_criar(TipoEstrutura tipo, const Query *query);
 
 bool estrutura_inserir(Estrutura *estrutura, ITEM *item);
 
 size_t estrutura_tamanho(const Estrutura *estrutura);
 
-bool estrutura_percorrer(
-    const Estrutura *estrutura,
-    VisitanteItem visitante,
-    void *contexto
-);
+bool estrutura_percorrer(const Estrutura *estrutura, VisitanteItem visitante, void *contexto);
 
 void estrutura_destruir(Estrutura *estrutura);
 

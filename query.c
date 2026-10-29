@@ -104,7 +104,7 @@ static bool compara_numero(double valor, double alvo, OpType op) {
 }
 
 static bool compara_texto(const char *valor, const char *alvo, OpType op) {
-    int comparacao = strcmp(valor, alvo);
+    int comparacao = strcasecmp(valor, alvo); // ignora maiúsculas/minúsculas
     // strcmp positivo se valor vier depois de alvo negativo se vier antes na ordem lexicografica
     switch (op) {
         case OP_EQ:  return comparacao == 0;

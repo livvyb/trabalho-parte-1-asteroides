@@ -57,8 +57,9 @@ static const char *chave_do_item(const ITEM *item, const char *campo, char *buf,
 ListaGen *criar_lista_gen(void) {
     ListaGen *lista = calloc(1, sizeof(ListaGen));
     if (lista != NULL) {
-        strcpy(lista->campo_grupo, "threat_category");
-        strcpy(lista->campo_subgrupo, "year");
+        // sem GROUP na query, todos os itens ficam num único grupo/subgrupo ("N/A")
+        lista->campo_grupo[0] = '\0';
+        lista->campo_subgrupo[0] = '\0';
     }
     return lista;
 }

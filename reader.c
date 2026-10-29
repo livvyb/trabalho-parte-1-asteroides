@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
+#include "reader_patrimonio.h"
 
 struct reader_ {
     FILE *arquivo;
@@ -13,10 +15,11 @@ struct reader_ {
     char cabecalho[READER_MAX_LINHA];
     char linha[READER_MAX_LINHA];  // linha original, que vai para o item
     char campos[READER_MAX_LINHA]; // cópia da linha, separada em campos
+    char extra[READER_MAX_LINHA];  // linha física seguinte, quando o registro tem quebra de linha entre aspas
 };
 
 // Leitores disponíveis em --reader (na Parte 2, basta acrescentar o novo aqui)
-static const LEITOR *LEITORES[] = { &LEITOR_NASA };
+static const LEITOR *LEITORES[] = { &LEITOR_NASA, &LEITOR_PATRIMONIO };
 
 /* Separa o texto em campos trocando o delimitador por '\0'. Entre aspas o
    delimitador é ignorado (ex.: "Worth a tweet, not worth a bunker.") e as
@@ -77,6 +80,42 @@ static int le_linha(FILE *arquivo, char *destino, bool *tinha_cr) {
     return 1;
 }
 
+// Pula o BOM UTF-8 (EF BB BF) do início do arquivo, se existir
+static size_t salta_bom(const char *texto) {
+    return strncmp(texto, "\xEF\xBB\xBF", 3) == 0 ? 3 : 0;
+}
+
+static bool caractere_util(unsigned char c) {
+    return c < 128 && isalnum(c);
+}
+
+/* Compara nomes de colunas ignorando maiúsculas, espaços, pontuação e bytes
+   não ASCII (acentos). Assim "Ano Tombamento " casa com "Ano Tombamento" e o
+   cabeçalho é aceito em UTF-8 ou Latin-1. A ordem e a quantidade de colunas
+   continuam sendo validadas. */
+static bool nomes_iguais(const char *a, const char *b) {
+    for (;;) {
+        while (*a != '\0' && !caractere_util((unsigned char)*a)) a++;
+        while (*b != '\0' && !caractere_util((unsigned char)*b)) b++;
+        if (*a == '\0' || *b == '\0') {
+            return *a == *b;
+        }
+        if (tolower((unsigned char)*a) != tolower((unsigned char)*b)) {
+            return false;
+        }
+        a++;
+        b++;
+    }
+}
+
+static int conta_aspas(const char *texto) {
+    int n = 0;
+    for (; *texto != '\0'; texto++) {
+        if (*texto == '"') n++;
+    }
+    return n;
+}
+
 // Mostra o erro, libera o que já foi aberto e retorna NULL
 static READER *falha_ao_abrir(READER *reader, const char *mensagem, const char *detalhe) {
     fprintf(stderr, "erro: %s '%s'\n", mensagem, detalhe);
@@ -121,14 +160,14 @@ READER *reader_abrir(const char *nome, const char *caminho) {
     reader->numero_linha = 1;
 
     // o cabeçalho precisa ter as colunas esperadas pelo leitor, na mesma ordem
-    strcpy(reader->campos, reader->cabecalho);
+    strcpy(reader->campos, reader->cabecalho + salta_bom(reader->cabecalho));
     quantidade = separa_campos(reader->campos, reader->leitor->delimitador,
                                colunas, READER_MAX_COLUNAS);
     if (quantidade != reader->leitor->quantidade_colunas) {
         return falha_ao_abrir(reader, "numero de colunas inesperado em", caminho);
     }
     for (int i = 0; i < quantidade; i++) {
-        if (strcmp(colunas[i], reader->leitor->colunas[i]) != 0) {
+        if (!nomes_iguais(colunas[i], reader->leitor->colunas[i])) {
             return falha_ao_abrir(reader, "coluna esperada no cabecalho:",
                                   reader->leitor->colunas[i]);
         }
@@ -141,6 +180,41 @@ READER *reader_abrir(const char *nome, const char *caminho) {
 static void avisa_linha_invalida(READER *reader, const char *motivo) {
     reader->linhas_puladas++;
     fprintf(stderr, "aviso: linha %ld ignorada (%s)\n", reader->numero_linha, motivo);
+}
+
+/* Um campo entre aspas pode conter quebras de linha (ex.: Observações).
+   Enquanto houver aspas abertas, junta as linhas físicas seguintes em
+   reader->linha, mantendo o fim de linha original, para a saída ficar idêntica.
+   Retorna 1 se o registro fechou, 0 se o arquivo acabou com aspas abertas e
+   -1 se o registro não cabe no buffer. */
+static int completa_registro(READER *reader) {
+    bool aberta = conta_aspas(reader->linha) % 2 != 0;
+    bool cabe = true;
+    size_t tam_fim = strlen(reader->fim_de_linha);
+
+    while (aberta) {
+        int estado = le_linha(reader->arquivo, reader->extra, NULL);
+        size_t usado = strlen(reader->linha);
+        size_t novo = strlen(reader->extra);
+
+        if (estado == 0) {
+            return 0;
+        }
+        reader->numero_linha++;
+        if (estado < 0) {
+            return -1;
+        }
+        if (cabe && usado + tam_fim + novo < READER_MAX_LINHA) {
+            memcpy(reader->linha + usado, reader->fim_de_linha, tam_fim);
+            memcpy(reader->linha + usado + tam_fim, reader->extra, novo + 1);
+        } else {
+            cabe = false;
+        }
+        if (conta_aspas(reader->extra) % 2 != 0) {
+            aberta = !aberta;
+        }
+    }
+    return cabe ? 1 : -1;
 }
 
 ITEM *reader_proximo(READER *reader) {
@@ -164,6 +238,16 @@ ITEM *reader_proximo(READER *reader) {
         }
         if (reader->linha[0] == '\0') {
             continue; // linha em branco
+        }
+
+        estado = completa_registro(reader);
+        if (estado == 0) {
+            avisa_linha_invalida(reader, "aspas nao fechadas ate o fim do arquivo");
+            continue;
+        }
+        if (estado < 0) {
+            avisa_linha_invalida(reader, "registro maior que o limite");
+            continue;
         }
 
         strcpy(reader->campos, reader->linha);

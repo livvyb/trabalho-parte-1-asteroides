@@ -1,0 +1,5 @@
+FILTER|municipio|==|São Paulo
+FILTER|ano_tombamento|>=|1970
+ORDER|ano_tombamento|ASC
+GROUP|tipo_protecao|livro_tombo
+CROSS|tipo_protecao|livro_tombo

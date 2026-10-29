@@ -68,8 +68,9 @@ static Descritor *acha_ou_cria(Descritor **inicio, Descritor **ultimo, const cha
 ListaCruz *criar_lista_cruz(void) {
     ListaCruz *lista = calloc(1, sizeof(ListaCruz));
     if (lista != NULL) {
-        strcpy(lista->campo_linha, "threat_category");
-        strcpy(lista->campo_coluna, "year");
+        // sem CROSS na query, todos os itens ficam numa única linha/coluna ("N/A")
+        lista->campo_linha[0] = '\0';
+        lista->campo_coluna[0] = '\0';
     }
     return lista;
 }

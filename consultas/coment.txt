@@ -1,0 +1,1 @@
+printf '# comentario\n\n  FILTER | distance_au | <= | 0.05  \r\nORDER|distance_au|ASC\r\n' > consultas/t_comentarios.txt

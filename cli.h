@@ -12,6 +12,7 @@ typedef struct {
     char output_path[256];
     int top_k;
     int limit;
+    bool view_col;
 } ARGS;
 
 bool parse_cli_args(int argc, char *argv[], ARGS *args);

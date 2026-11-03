@@ -1,0 +1,4 @@
+FILTER|distance_au|<=|0.05
+ORDER|distance_au|ASC
+GROUP|threat_category|year
+CROSS|threat_category|year

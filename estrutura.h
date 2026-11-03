@@ -19,8 +19,6 @@ typedef enum {
 
 typedef struct Estrutura Estrutura;
 
-typedef bool (*VisitanteItem)(const ITEM *item, void *contexto);  //callback - passagem de estado e controle de parada
-
 Estrutura *estrutura_criar(TipoEstrutura tipo, const Query *query);
 
 bool estrutura_inserir(Estrutura *estrutura, ITEM *item);
@@ -28,6 +26,8 @@ bool estrutura_inserir(Estrutura *estrutura, ITEM *item);
 size_t estrutura_tamanho(const Estrutura *estrutura);
 
 bool estrutura_percorrer(const Estrutura *estrutura, VisitanteItem visitante, void *contexto);
+
+bool estrutura_percorrer_alt(const Estrutura *estrutura, VisitanteItem visitante, void *contexto);
 
 void estrutura_destruir(Estrutura *estrutura);
 

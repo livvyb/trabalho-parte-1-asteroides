@@ -1,0 +1,4 @@
+FILTER|year|>=|0
+ORDER|year|DESC
+GROUP|threat_category
+CROSS|threat_category|year

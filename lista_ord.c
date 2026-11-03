@@ -6,8 +6,9 @@
 
 typedef struct no_ord {
     ITEM *item;
-    double chave;       // calculada uma única vez, na inserção
-    bool tem_chave;     // false se o campo está ausente no item
+    double chave;          // chave numérica
+    const char *texto;     // chave textual (aponta para o item); NULL se numérica
+    bool tem_chave;        // false se o campo está ausente no item
     struct no_ord *prox;
 } NoOrd;
 
@@ -42,11 +43,19 @@ bool lista_ord_configurar(ListaOrd *lista, const char *campo, bool desc) {
     return true;
 }
 
+// Ordem natural crescente. Números vêm antes de textos.
+static int compara_chaves(const NoOrd *a, const NoOrd *b) {
+    if (a->texto != NULL && b->texto != NULL) return strcasecmp(a->texto, b->texto);
+    if (a->texto == NULL && b->texto == NULL) return (a->chave > b->chave) - (a->chave < b->chave);
+    return a->texto != NULL ? 1 : -1;
+}
+
 // Itens sem a chave ficam sempre no final, em qualquer direção
 static bool vem_antes(const ListaOrd *lista, const NoOrd *a, const NoOrd *b) {
     if (!a->tem_chave) return false;
     if (!b->tem_chave) return true;
-    return lista->desc ? a->chave > b->chave : a->chave < b->chave;
+    int c = compara_chaves(a, b);
+    return lista->desc ? c > 0 : c < 0;
 }
 
 bool lista_ord_inserir(ListaOrd *lista, ITEM *item) {
@@ -54,13 +63,24 @@ bool lista_ord_inserir(ListaOrd *lista, ITEM *item) {
 
     NoOrd *novo = malloc(sizeof(NoOrd));
     if (novo == NULL) return false;
-    novo->item = item;
-    novo->prox = NULL;
-    if (lista->usa_similaridade) {
-        novo->chave = item_get_similaridade(item);
-        novo->tem_chave = true;
-    } else {
-        novo->chave = item_get_numero(item, lista->campo, &novo->tem_chave);
+        novo->item = item;
+        novo->prox = NULL;
+        novo->texto = NULL;
+        if (lista->usa_similaridade) {
+            novo->chave = item_get_similaridade(item);
+            novo->tem_chave = true;
+        } else {
+            bool ok;
+            novo->chave = item_get_numero(item, lista->campo, &ok);
+            if (!ok) {
+                // não é numérico: tenta como texto
+                const char *t = item_get_texto(item, lista->campo);
+                if (t != NULL && t[0] != '\0') {
+                    novo->texto = t;
+                    ok = true;
+                }
+            }
+            novo->tem_chave = ok;
     }
 
     // A ordem é mantida durante a inserção (inserção ordenada estável)

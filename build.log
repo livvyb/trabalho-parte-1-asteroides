@@ -1,0 +1,39 @@
+gcc -Wall -Wextra -pedantic -g -O2 -c cli.c -o cli.o
+gcc -Wall -Wextra -pedantic -g -O2 -c estrutura.c -o estrutura.o
+gcc -Wall -Wextra -pedantic -g -O2 -c item.c -o item.o
+gcc -Wall -Wextra -pedantic -g -O2 -c query.c -o query.o
+gcc -Wall -Wextra -pedantic -g -O2 -c reader.c -o reader.o
+gcc -Wall -Wextra -pedantic -g -O2 -c reader_nasa.c -o reader_nasa.o
+gcc -Wall -Wextra -pedantic -g -O2 -c reader_patrimonio.c -o reader_patrimonio.o
+gcc -Wall -Wextra -pedantic -g -O2 -c lista_seq.c -o lista_seq.o
+gcc -Wall -Wextra -pedantic -g -O2 -c lista_enc.c -o lista_enc.o
+gcc -Wall -Wextra -pedantic -g -O2 -c lista_cabeca.c -o lista_cabeca.o
+gcc -Wall -Wextra -pedantic -g -O2 -c lista_ord.c -o lista_ord.o
+gcc -Wall -Wextra -pedantic -g -O2 -c lista_gen.c -o lista_gen.o
+gcc -Wall -Wextra -pedantic -g -O2 -c lista_cruz.c -o lista_cruz.o
+gcc -Wall -Wextra -pedantic -g -O2 -c pilha.c -o pilha.o
+gcc -Wall -Wextra -pedantic -g -O2 -c fila.c -o fila.o
+gcc -Wall -Wextra -pedantic -g -O2 -c main.c -o main.o
+gcc -Wall -Wextra -pedantic -g -O2 -o trabalho cli.o estrutura.o item.o query.o reader.o reader_nasa.o reader_patrimonio.o lista_seq.o lista_enc.o lista_cabeca.o lista_ord.o lista_gen.o lista_cruz.o pilha.o fila.o main.o -lm
+/usr/bin/ld: query.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:50: multiple definition of `group_count'; estrutura.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:50: first defined here
+/usr/bin/ld: query.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:49: multiple definition of `group_fields'; estrutura.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:49: first defined here
+/usr/bin/ld: lista_seq.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:50: multiple definition of `group_count'; estrutura.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:50: first defined here
+/usr/bin/ld: lista_seq.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:49: multiple definition of `group_fields'; estrutura.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:49: first defined here
+/usr/bin/ld: lista_enc.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:50: multiple definition of `group_count'; estrutura.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:50: first defined here
+/usr/bin/ld: lista_enc.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:49: multiple definition of `group_fields'; estrutura.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:49: first defined here
+/usr/bin/ld: lista_cabeca.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:50: multiple definition of `group_count'; estrutura.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:50: first defined here
+/usr/bin/ld: lista_cabeca.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:49: multiple definition of `group_fields'; estrutura.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:49: first defined here
+/usr/bin/ld: lista_ord.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:50: multiple definition of `group_count'; estrutura.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:50: first defined here
+/usr/bin/ld: lista_ord.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:49: multiple definition of `group_fields'; estrutura.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:49: first defined here
+/usr/bin/ld: lista_gen.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:50: multiple definition of `group_count'; estrutura.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:50: first defined here
+/usr/bin/ld: lista_gen.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:49: multiple definition of `group_fields'; estrutura.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:49: first defined here
+/usr/bin/ld: lista_cruz.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:50: multiple definition of `group_count'; estrutura.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:50: first defined here
+/usr/bin/ld: lista_cruz.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:49: multiple definition of `group_fields'; estrutura.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:49: first defined here
+/usr/bin/ld: pilha.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:50: multiple definition of `group_count'; estrutura.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:50: first defined here
+/usr/bin/ld: pilha.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:49: multiple definition of `group_fields'; estrutura.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:49: first defined here
+/usr/bin/ld: fila.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:50: multiple definition of `group_count'; estrutura.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:50: first defined here
+/usr/bin/ld: fila.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:49: multiple definition of `group_fields'; estrutura.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:49: first defined here
+/usr/bin/ld: main.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:50: multiple definition of `group_count'; estrutura.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:50: first defined here
+/usr/bin/ld: main.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:49: multiple definition of `group_fields'; estrutura.o:/home/liv/Documents/aulas/2026.02/algo/trabalho/query.h:49: first defined here
+collect2: error: ld returned 1 exit status
+make: *** [Makefile:21: trabalho] Error 1

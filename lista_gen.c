@@ -5,31 +5,25 @@
 
 #define CAMPO_MAX 64
 
-typedef struct no_item {
-    ITEM *item;
-    struct no_item *prox;
-} NoItem;
-
-typedef struct no_subgrupo {
-    char *chave;
-    NoItem *inicio;
-    NoItem *fim;
-    struct no_subgrupo *prox;
-} NoSubgrupo;
-
-typedef struct no_grupo {
-    char *chave;
-    NoSubgrupo *subgrupos;
-    NoSubgrupo *ultimo_sub;
-    struct no_grupo *prox;
-} NoGrupo;
+typedef struct no_gen NoGen;
+struct no_gen {
+    bool eh_sublista;
+    union {
+        ITEM *item;                       // átomo
+        struct {                          // sublista
+            char *chave;
+            NoGen *filhos;
+            NoGen *ultimo;
+        } sub;
+    } u;
+    NoGen *prox;
+};
 
 struct ListaGen {
-    NoGrupo *grupos;
-    NoGrupo *ultimo_grupo;
+    NoGen raiz;                           // sublista raiz, sem chave
     size_t tamanho;
-    char campo_grupo[CAMPO_MAX];     // 1º campo do GROUP
-    char campo_subgrupo[CAMPO_MAX];  // 2º campo do GROUP
+    char campos[MAX_NIVEIS][CAMPO_MAX];   // um campo por nível do GROUP
+    int niveis;
 };
 
 static char *duplica(const char *s) {
@@ -54,107 +48,101 @@ static const char *chave_do_item(const ITEM *item, const char *campo, char *buf,
     return "N/A";
 }
 
+// Anexa 'no' ao fim dos filhos de 'sub'
+static void anexa(NoGen *sub, NoGen *no) {
+    if (sub->u.sub.ultimo != NULL) sub->u.sub.ultimo->prox = no;
+    else sub->u.sub.filhos = no;
+    sub->u.sub.ultimo = no;
+}
+
 ListaGen *criar_lista_gen(void) {
     ListaGen *lista = calloc(1, sizeof(ListaGen));
     if (lista != NULL) {
-        // sem GROUP na query, todos os itens ficam num único grupo/subgrupo ("N/A")
-        lista->campo_grupo[0] = '\0';
-        lista->campo_subgrupo[0] = '\0';
+        lista->raiz.eh_sublista = true;   // sem GROUP: itens ficam direto na raiz
     }
     return lista;
 }
 
-// Define os campos do comando GROUP. Só vale com a lista vazia.
-bool lista_gen_configurar(ListaGen *lista, const char *campo_grupo, const char *campo_subgrupo) {
-    if (lista == NULL || campo_grupo == NULL || campo_subgrupo == NULL || lista->tamanho > 0 ||
-        strlen(campo_grupo) >= CAMPO_MAX || strlen(campo_subgrupo) >= CAMPO_MAX) {
+// Define os campos do GROUP (1 a MAX_NIVEIS). Só vale com a lista vazia.
+bool lista_gen_configurar(ListaGen *lista, const char *const *campos, int n) {
+    if (lista == NULL || campos == NULL || lista->tamanho > 0 || n < 0 || n > MAX_NIVEIS) {
         return false;
     }
-    strcpy(lista->campo_grupo, campo_grupo);
-    strcpy(lista->campo_subgrupo, campo_subgrupo);
+    for (int i = 0; i < n; i++) {
+        if (campos[i] == NULL || strlen(campos[i]) >= CAMPO_MAX) return false;
+        strcpy(lista->campos[i], campos[i]);
+    }
+    lista->niveis = n;
     return true;
 }
 
 bool lista_gen_inserir(ListaGen *lista, ITEM *item) {
-    char buf1[48], buf2[48];
-    if (!lista || !item) return false;
+    NoGen *atual, *folha;
+    if (lista == NULL || item == NULL) return false;
 
-    const char *chave_g = chave_do_item(item, lista->campo_grupo, buf1, sizeof(buf1));
-    const char *chave_s = chave_do_item(item, lista->campo_subgrupo, buf2, sizeof(buf2));
+    atual = &lista->raiz;
+    for (int nivel = 0; nivel < lista->niveis; nivel++) {
+        char buf[48];
+        const char *chave = chave_do_item(item, lista->campos[nivel], buf, sizeof(buf));
+        NoGen *f = atual->u.sub.filhos;
 
-    // Grupo (nível 1): busca ou cria
-    NoGrupo *g = lista->grupos;
-    while (g && strcmp(g->chave, chave_g) != 0) g = g->prox;
-    if (!g) {
-        g = calloc(1, sizeof(NoGrupo));
-        if (!g) return false;
-        g->chave = duplica(chave_g);
-        if (!g->chave) { free(g); return false; }
-        if (lista->ultimo_grupo) lista->ultimo_grupo->prox = g; else lista->grupos = g;
-        lista->ultimo_grupo = g;
+        while (f != NULL && !(f->eh_sublista && strcmp(f->u.sub.chave, chave) == 0)) {
+            f = f->prox;
+        }
+        if (f == NULL) {                  // cria a sublista deste nível
+            f = calloc(1, sizeof(NoGen));
+            if (f == NULL) return false;
+            f->eh_sublista = true;
+            f->u.sub.chave = duplica(chave);
+            if (f->u.sub.chave == NULL) { free(f); return false; }
+            anexa(atual, f);
+        }
+        atual = f;
     }
 
-    // Subgrupo (nível 2): busca ou cria
-    NoSubgrupo *s = g->subgrupos;
-    while (s && strcmp(s->chave, chave_s) != 0) s = s->prox;
-    if (!s) {
-        s = calloc(1, sizeof(NoSubgrupo));
-        if (!s) return false;
-        s->chave = duplica(chave_s);
-        if (!s->chave) { free(s); return false; }
-        if (g->ultimo_sub) g->ultimo_sub->prox = s; else g->subgrupos = s;
-        g->ultimo_sub = s;
-    }
-
-    // Item no fim do subgrupo (mantém a ordem de chegada)
-    NoItem *ni = malloc(sizeof(NoItem));
-    if (!ni) return false;
-    ni->item = item;
-    ni->prox = NULL;
-    if (s->fim) s->fim->prox = ni; else s->inicio = ni;
-    s->fim = ni;
-
+    folha = calloc(1, sizeof(NoGen));
+    if (folha == NULL) return false;
+    folha->u.item = item;
+    anexa(atual, folha);
     lista->tamanho++;
     return true;
 }
 
 size_t lista_gen_tamanho(const ListaGen *lista) {
-    return lista ? lista->tamanho : 0;
+    return lista != NULL ? lista->tamanho : 0;
 }
 
-bool lista_gen_percorrer(const ListaGen *lista, VisitanteItem visitante, void *contexto) {
-    if (!lista || !visitante) return false;
-    for (NoGrupo *g = lista->grupos; g; g = g->prox) {
-        for (NoSubgrupo *s = g->subgrupos; s; s = s->prox) {
-            for (NoItem *ni = s->inicio; ni; ni = ni->prox) {
-                if (!visitante(ni->item, contexto)) return false;
-            }
+static bool percorre_sub(const NoGen *sub, VisitanteItem visitante, void *contexto) {
+    for (const NoGen *f = sub->u.sub.filhos; f != NULL; f = f->prox) {
+        if (f->eh_sublista) {
+            if (!percorre_sub(f, visitante, contexto)) return false;
+        } else if (!visitante(f->u.item, contexto)) {
+            return false;
         }
     }
     return true;
 }
 
-void lista_gen_destruir(ListaGen *lista) {
-    if (!lista) return;
-    NoGrupo *g = lista->grupos;
-    while (g) {
-        NoSubgrupo *s = g->subgrupos;
-        while (s) {
-            NoItem *ni = s->inicio;
-            while (ni) {
-                NoItem *prox_ni = ni->prox;
-                free(ni);
-                ni = prox_ni;
-            }
-            NoSubgrupo *prox_s = s->prox;
-            free(s->chave);
-            free(s);
-            s = prox_s;
-        }
-        NoGrupo *prox_g = g->prox;
-        free(g->chave);
-        free(g);
-        g = prox_g;
+bool lista_gen_percorrer(const ListaGen *lista, VisitanteItem visitante, void *contexto) {
+    if (lista == NULL || visitante == NULL) return false;
+    return percorre_sub(&lista->raiz, visitante, contexto);
+}
+
+static void libera_filhos(NoGen *sub) {
+    NoGen *f = sub->u.sub.filhos;
+    while (f != NULL) {
+        NoGen *prox = f->prox;
+        if (f->eh_sublista) {
+            libera_filhos(f);
+            free(f->u.sub.chave);
+        }                                 // o item pertence ao main
+        free(f);
+        f = prox;
     }
+}
+
+void lista_gen_destruir(ListaGen *lista) {
+    if (lista == NULL) return;
+    libera_filhos(&lista->raiz);
     free(lista);
 }

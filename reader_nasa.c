@@ -1,6 +1,8 @@
 #include "reader_nasa.h"
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
+#include <limits.h>
 
 // Posição de cada coluna no CSV
 enum {
@@ -91,26 +93,44 @@ static bool le_texto(const char *texto, char *destino, size_t tamanho, bool *pre
     return true;
 }
 
-static bool le_inteiro(const char *texto, int *destino, bool *presente) {
+/* Lê um número. Vazio, "nan" ou "inf" são tratados como ausentes (não é erro).
+   Retorna false só para texto que não é número (ex.: "abc"). */
+static bool le_numero(const char *texto, double *valor, bool *presente) {
     char *fim;
 
     *presente = texto[0] != '\0';
     if (!*presente) {
         return true;
     }
-    *destino = (int)strtol(texto, &fim, 10);
-    return *fim == '\0'; // o texto inteiro precisa ser um número
+    *valor = strtod(texto, &fim);
+    if (fim == texto || *fim != '\0') {
+        return false;
+    }
+    if (!isfinite(*valor)) {
+        *presente = false;
+    }
+    return true;
 }
 
 static bool le_real(const char *texto, double *destino, bool *presente) {
-    char *fim;
+    return le_numero(texto, destino, presente);
+}
 
-    *presente = texto[0] != '\0';
+// Aceita "2025" e também "2025.0" ( CSV gerado por pandas)
+static bool le_inteiro(const char *texto, int *destino, bool *presente) {
+    double v = 0.0;
+
+    if (!le_numero(texto, &v, presente)) {
+        return false;
+    }
     if (!*presente) {
         return true;
     }
-    *destino = strtod(texto, &fim);
-    return *fim == '\0';
+    if (v < INT_MIN || v > INT_MAX || v != (double)(long long)v) {
+        return false;
+    }
+    *destino = (int)v;
+    return true;
 }
 
 static bool le_bool(const char *texto, bool *destino, bool *presente) {
@@ -131,7 +151,7 @@ static bool le_bool(const char *texto, bool *destino, bool *presente) {
 
 // Converte os campos de uma linha em Asteroid. Retorna NULL se algum for inválido
 static void *nasa_converter(char **campos) {
-    Asteroid *a = malloc(sizeof(Asteroid));
+    Asteroid *a = calloc(1, sizeof(Asteroid));
     bool *p;
 
     if (a == NULL) {

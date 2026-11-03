@@ -26,6 +26,7 @@ typedef struct {
 // Abre o arquivo com o leitor 'nome'. Retorna NULL em caso de erro
 READER *reader_abrir(const char *nome, const char *caminho);
 
+bool reader_erro(const READER *reader); 
 // Lê o próximo registro válido. Linhas inválidas são puladas com aviso
 // no stderr. Retorna NULL no fim do arquivo
 ITEM *reader_proximo(READER *reader);

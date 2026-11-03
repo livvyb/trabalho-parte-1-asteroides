@@ -172,7 +172,6 @@ bool carrega_query(const char *filepath, Query *q) {   // filepath -> caminho do
         if (*comando == '\0' || *comando == '#'){
             continue;
         } 
-        comando[strcspn(comando, "\r\n")] = '\0';   // remove quebras de linha 
         comando = remove_espacos(comando);
         if (*comando == '\0'){
             continue; // pular pra outra linha
@@ -303,25 +302,24 @@ bool carrega_query(const char *filepath, Query *q) {   // filepath -> caminho do
             copia_texto(q->order_key, sizeof(q->order_key), campo);
             q->order_desc = strcmp(valor, "DESC") == 0;
 
-        } else if (strcmp(campo, "GROUP") == 0) {
-            char *campo1 = strtok(NULL, "|");
-            char *campo2 = strtok(NULL, "|");   // campos usados pela lista ordenada
+       } else if (strcmp(campo, "GROUP") == 0) {
+            int n = 0;
+            char *c;
 
-            if (campo1 == NULL || campo2 == NULL || strtok(NULL, "|") != NULL ||
-                strlen(campo1) >= sizeof(q->group_fields[0]) || strlen(campo2) >= sizeof(q->group_fields[1])) {
+            while ((c = strtok(NULL, "|")) != NULL) {
+                c = remove_espacos(c);
+                if (n >= MAX_GROUP || *c == '\0' ||
+                    strlen(c) >= sizeof(q->group_fields[0])) {
+                    fclose(arquivo);
+                    return false;
+                }
+                copia_texto(q->group_fields[n++], sizeof(q->group_fields[0]), c);
+            }
+            if (n == 0) {
                 fclose(arquivo);
                 return false;
             }
-            copia_texto(q->group_fields[0],
-                        sizeof(q->group_fields[0]),
-                        remove_espacos(campo1));
-
-            copia_texto(q->group_fields[1],
-                        sizeof(q->group_fields[1]),
-                        remove_espacos(campo2));
-
-            q->group_count = 2;
-
+            q->group_count = n;
         } else if (strcmp(campo, "CROSS") == 0) {
             char *campo1 = strtok(NULL, "|");
             char *campo2 = strtok(NULL, "|");    // campos usados pela lista cruzada

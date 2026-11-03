@@ -6,6 +6,7 @@
 
 #define MAX_FILTERS 16
 #define MAX_SIMS 16
+#define MAX_GROUP 4
 
 // arquivo contendo os critérios da busca
 
@@ -38,13 +39,13 @@ typedef struct {
     char order_key[64];      // ORDER
     bool order_desc;
     
-    char group_fields[2][64];// GROUP
+    char group_fields[MAX_GROUP][64];
     int group_count;
     
     char cross_fields[2][64];// CROSS
     int cross_count;
-} Query;
 
+} Query;
 
 bool carrega_query(const char *filepath, Query *q);
 bool avalia_query(const Query *q, const ITEM *item, double *out_similarity);

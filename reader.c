@@ -16,6 +16,8 @@ struct reader_ {
     char linha[READER_MAX_LINHA];  // linha original, que vai para o item
     char campos[READER_MAX_LINHA]; // cópia da linha, separada em campos
     char extra[READER_MAX_LINHA];  // linha física seguinte, quando o registro tem quebra de linha entre aspas
+    bool erro;                             // true se leitura parou por falta de memória
+
 };
 
 // Leitores disponíveis em --reader (na Parte 2, basta acrescentar o novo aqui)
@@ -217,6 +219,10 @@ static int completa_registro(READER *reader) {
     return cabe ? 1 : -1;
 }
 
+bool reader_erro(const READER *reader) {
+    return reader != NULL && reader->erro;
+}
+
 ITEM *reader_proximo(READER *reader) {
     char *campos[READER_MAX_COLUNAS];
     int estado;
@@ -269,6 +275,7 @@ ITEM *reader_proximo(READER *reader) {
         if (item == NULL) {
             free(copia);
             reader->leitor->ops->apagar(dados);
+            reader->erro = true;
             fprintf(stderr, "erro: memoria insuficiente\n");
             return NULL;
         }

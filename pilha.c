@@ -54,7 +54,6 @@ void pilha_destruir(PILHA **p) {
         NoPilha *atual = (*p)->topo;
         while (atual != NULL) {
             NoPilha *prox = atual->prox;
-            item_apagar(&(atual->item));
             free(atual);
             atual = prox;
         }

@@ -8,7 +8,7 @@ bool parse_cli_args(int argc, char *argv[], ARGS *args) {
     memset(args, 0, sizeof(ARGS));
     args->top_k = 0;   // maximo de registros exportados -> 0 = todos
     args->limit = 0;   // maximo de registros carregados -> 0 = toda a base
-
+    args->view_col = false; // default: view row
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--reader") == 0 && i + 1 < argc) {
             strncpy(args->reader, argv[++i], sizeof(args->reader) - 1);
@@ -26,6 +26,20 @@ bool parse_cli_args(int argc, char *argv[], ARGS *args) {
             args->top_k = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--limit") == 0 && i + 1 < argc) {
             args->limit = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--view") == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "erro: --view exige um valor (row ou col)\n");
+                return false;
+            }
+            i++;
+            if (strcmp(argv[i], "row") == 0) {
+                args->view_col = false;
+            } else if (strcmp(argv[i], "col") == 0) {
+                args->view_col = true;
+            } else {
+                fprintf(stderr, "erro: --view deve ser row ou col (recebido '%s')\n", argv[i]);
+                return false;
+            }
         }
     }
 

@@ -1,6 +1,5 @@
 #ifndef FILA_H
 #define FILA_H
-
 #include "item.h"
 #include "estrutura.h"
 #include <stdbool.h>

@@ -62,7 +62,6 @@ void fila_destruir(FILA **f) {
         NoFila *atual = (*f)->inicio;
         while (atual != NULL) {
             NoFila *prox = atual->prox;
-            item_apagar(&(atual->item));
             free(atual);
             atual = prox;
         }

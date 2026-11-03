@@ -18,6 +18,7 @@ struct Estrutura {
     bool (*inserir)(void *dados, ITEM *item);
     size_t (*tamanho)(const void *dados);
     bool (*percorrer)(const void *dados, VisitanteItem visitante, void *contexto);
+    bool (*percorrer_alt)(const void *dados, VisitanteItem visitante, void *contexto);
     void (*destruir)(void *dados);
 };
 
@@ -132,6 +133,9 @@ static bool lista_cruz_percorrer_adapter(const void *dados, VisitanteItem visita
 static void lista_cruz_destruir_adapter(void *dados) { 
     lista_cruz_destruir(dados); 
 }
+static bool lista_cruz_percorrer_alt_adapter(const void *dados, VisitanteItem visitante, void *contexto) {
+    return lista_cruz_percorrer_por_coluna((const ListaCruz *)dados, visitante, contexto);
+}
 
 // Criação da estrutura genérica 
 // 'query' define ORDER/GROUP/CROSS para lista_ord/lista_gen/lista_cruz (pode ser NULL)
@@ -146,6 +150,7 @@ Estrutura *estrutura_criar(TipoEstrutura tipo, const Query *query){
     estrutura->tamanho = NULL;
     estrutura->percorrer = NULL;
     estrutura->destruir = NULL;
+    estrutura->percorrer_alt = NULL;
     
     switch (tipo) {
         case ESTRUTURA_LISTA_SEQ:
@@ -203,10 +208,15 @@ Estrutura *estrutura_criar(TipoEstrutura tipo, const Query *query){
             
         case ESTRUTURA_LISTA_GEN:
             estrutura->dados = criar_lista_gen();
-            if (estrutura->dados != NULL && query != NULL && query->group_count == 2 &&
-                !lista_gen_configurar(estrutura->dados, query->group_fields[0], query->group_fields[1])) {
-                lista_gen_destruir(estrutura->dados);
-                estrutura->dados = NULL;
+            if (estrutura->dados != NULL && query != NULL && query->group_count > 0) {
+                const char *campos[MAX_GROUP];
+                for (int i = 0; i < query->group_count; i++) {
+                    campos[i] = query->group_fields[i];
+                }
+                if (!lista_gen_configurar(estrutura->dados, campos, query->group_count)) {
+                    lista_gen_destruir(estrutura->dados);
+                    estrutura->dados = NULL;
+                }
             }
             estrutura->inserir = lista_gen_inserir_adapter;
             estrutura->tamanho = lista_gen_tamanho_adapter;
@@ -225,13 +235,13 @@ Estrutura *estrutura_criar(TipoEstrutura tipo, const Query *query){
             estrutura->tamanho = lista_cruz_tamanho_adapter;
             estrutura->percorrer = lista_cruz_percorrer_adapter;
             estrutura->destruir = lista_cruz_destruir_adapter;
+            estrutura->percorrer_alt = lista_cruz_percorrer_alt_adapter;
             break;
 
         default:
             free(estrutura);
             return NULL;
     }
-
     if (estrutura->dados == NULL) {
         free(estrutura);
         return NULL;
@@ -261,6 +271,13 @@ bool estrutura_percorrer(const Estrutura *estrutura, VisitanteItem visitante, vo
         return false;
     }
     return estrutura->percorrer(estrutura->dados, visitante, contexto);
+}
+
+// Percorre pela segunda organização, se a estrutura tiver uma; senão, pela padrão
+bool estrutura_percorrer_alt(const Estrutura *estrutura, VisitanteItem visitante, void *contexto) {
+    if (estrutura == NULL || visitante == NULL) return false;
+    if (estrutura->percorrer_alt == NULL) return estrutura_percorrer(estrutura, visitante, contexto);
+    return estrutura->percorrer_alt(estrutura->dados, visitante, contexto);
 }
 
 void estrutura_destruir(Estrutura *estrutura) {

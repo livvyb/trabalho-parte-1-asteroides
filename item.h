@@ -8,7 +8,7 @@
    domínio. Os campos são acessados pelo nome, usando as funções fornecidas
    pelo leitor específico (ex.: reader_nasa). */
 typedef struct item_ ITEM;
-
+typedef bool (*VisitanteItem)(const ITEM *item, void *contexto); //callback - passagem de estado e controle de parada
 // Funções que cada domínio implementa sobre os seus dados.
 // 'ok' indica se o campo existe, é do tipo pedido e não está ausente
 typedef struct {

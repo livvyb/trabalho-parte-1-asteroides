@@ -198,7 +198,11 @@ int main(int argc, char *argv[]) {
     }
     fprintf(out, "%s%s", reader_cabecalho(reader), reader_fim_de_linha(reader));
     ContextoEscrita ctx_escrita = {out, reader_fim_de_linha(reader), 0, args.top_k};
-    estrutura_percorrer(resultado, visitante_escrita, &ctx_escrita);
+    if (args.view_col) {
+        estrutura_percorrer_alt(resultado, visitante_escrita, &ctx_escrita);
+    } else {
+        estrutura_percorrer(resultado, visitante_escrita, &ctx_escrita);
+    }
     if (fclose(out) != 0) {
         out = NULL;
         fprintf(stderr, "Erro ao gravar arquivo de saida.\n");

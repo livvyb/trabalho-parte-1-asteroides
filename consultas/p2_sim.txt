@@ -1,0 +1,4 @@
+FILTER|ano_tombamento|<=|1990
+SIM|ano_tombamento|1975|15|1.0
+ACCEPT|0.5
+ORDER|similarity|DESC

@@ -1,0 +1,9 @@
+Sistema: Linux-7.0.0-38-generic-x86_64-with-glibc2.39
+Python: 3.12.3
+CPU: 13th Gen Intel(R) Core(TM) i5-13450HX
+Memoria: 15.3 GB
+gcc: gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+Makefile: CFLAGS = -Wall -Wextra -pedantic -g -O2
+Consulta: consultas/teste.txt
+Entrada: dados/asteroids.csv (reader nasa)
+Execucoes por configuracao: 3

@@ -1,0 +1,2 @@
+FILTER|ano_tombamento|>=|0
+ORDER|ano_tombamento|ASC

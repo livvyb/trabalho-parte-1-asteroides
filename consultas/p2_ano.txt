@@ -1,0 +1,2 @@
+FILTER|ano_tombamento|>=|1980
+FILTER|ano_tombamento|<=|1990

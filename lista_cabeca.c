@@ -57,6 +57,33 @@ bool lista_cabeca_percorrer(const ListaCabeca *lista, VisitanteItem visitante, v
     }
     return true;
 }
+// Remove o nó que guarda 'item'. O sentinela dispensa tratar o primeiro nó como caso especial.
+bool lista_cabeca_remover(ListaCabeca *lista, const ITEM *item) {
+    if (lista == NULL || item == NULL) return false;
+
+    NoCabeca *ant = lista->sentinela;
+    while (ant->prox != NULL && ant->prox->item != item) {
+        ant = ant->prox;
+    }
+    if (ant->prox == NULL) return false;
+
+    NoCabeca *remover = ant->prox;
+    ant->prox = remover->prox;
+    if (remover == lista->fim) lista->fim = ant;
+    free(remover);               // o item pertence ao main
+    lista->tamanho--;
+    return true;
+}
+
+// Retorna o primeiro item que satisfaz o predicado, ou NULL
+const ITEM *lista_cabeca_buscar(const ListaCabeca *lista,
+                                bool (*pred)(const ITEM *, void *), void *ctx) {
+    if (lista == NULL || pred == NULL) return NULL;
+    for (NoCabeca *a = lista->sentinela->prox; a != NULL; a = a->prox) {
+        if (pred(a->item, ctx)) return a->item;
+    }
+    return NULL;
+}
 
 void lista_cabeca_destruir(ListaCabeca *lista) {
     if (lista != NULL) {

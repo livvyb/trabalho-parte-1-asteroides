@@ -1,0 +1,2 @@
+FILTER|municipio|==|Campinas
+FILTER|ano_tombamento|>=|1980

@@ -1,0 +1,4 @@
+FILTER|ano_tombamento|>=|0
+ORDER|ano_tombamento|ASC
+GROUP|tipo_protecao|municipio
+CROSS|tipo_protecao|ano_tombamento

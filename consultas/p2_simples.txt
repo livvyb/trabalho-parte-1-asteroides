@@ -1,0 +1,1 @@
+FILTER|ano_tombamento|>=|0

@@ -1,7 +1,8 @@
+#define _POSIX_C_SOURCE 200809L
 #include "lista_ord.h"
 #include <stdlib.h>
 #include <string.h>
-
+#include <strings.h>
 #define CAMPO_MAX 64
 
 typedef struct no_ord {

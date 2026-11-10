@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Patrimônio Paulista</title>
+  <meta name="description" content="Busca interativa nos bens tombados do estado de São Paulo, mostrando as estruturas de dados por trás da busca.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23b0461d'/%3E%3Cpath d='M6 12 16 6l10 6v2H6zM8 15h3v9H8zm6.5 0h3v9h-3zm6.5 0h3v9h-3zM6 25h20v2H6z' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+  <header class="topo">
+    <div class="marca">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7"/><path d="M6 12 16 6l10 6v2H6zM8 15h3v9H8zm6.5 0h3v9h-3zm6.5 0h3v9h-3zM6 25h20v2H6z"/></svg>
+      <div>
+        <h1>Patrimônio Paulista</h1>
+        <p class="subtitulo">Como um computador encontra o que você procura entre <span id="total-bens">527</span> bens tombados</p>
+      </div>
+    </div>
+    <nav class="abas" role="tablist" aria-label="Seções do site">
+      <button role="tab" id="aba-mapa" aria-controls="sec-mapa" aria-selected="true"><span class="num">1</span>Explorar o mapa</button>
+      <button role="tab" id="aba-estruturas" aria-controls="sec-estruturas" aria-selected="false"><span class="num">2</span>Por dentro do programa</button>
+      <button role="tab" id="aba-corrida" aria-controls="sec-corrida" aria-selected="false"><span class="num">3</span>Corrida</button>
+      <button role="tab" id="aba-desafios" aria-controls="sec-desafios" aria-selected="false"><span class="num">4</span>Desafios</button>
+    </nav>
+    <div class="ferramentas">
+      <button id="fonte-menos" class="botao-icone" aria-label="Diminuir o texto" title="Diminuir o texto">A−</button>
+      <button id="fonte-mais" class="botao-icone" aria-label="Aumentar o texto" title="Aumentar o texto">A+</button>
+      <button id="tema" class="botao-icone" aria-label="Alternar tema claro ou escuro" title="Tema claro/escuro">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- ============ Painel da busca (o arquivo de consulta) ============ -->
+    <aside class="busca" aria-label="Monte sua busca">
+      <div class="busca-cab">
+        <h2>Monte sua busca</h2>
+        <button id="limpar" class="botao-texto">Limpar tudo</button>
+      </div>
+
+      <fieldset class="bloco consulta-campo">
+        <legend><span>O que procurar</span><code>FILTER</code></legend>
+        <label class="campo">
+          <span class="rot">Município</span>
+          <select id="f-municipio"></select>
+          <span class="dica-campo">ou clique numa cidade do mapa</span>
+        </label>
+        <label class="campo">
+          <span class="rot">Região</span>
+          <select id="f-regiao"></select>
+        </label>
+        <div class="campo">
+          <span class="rot" id="rot-tipo">Tipo de proteção</span>
+          <div class="chips" id="f-tipo" role="radiogroup" aria-labelledby="rot-tipo"></div>
+        </div>
+        <label class="campo">
+          <span class="rot">Livro do Tombo</span>
+          <select id="f-livro"></select>
+        </label>
+        <div class="campo">
+          <span class="rot">Ano do tombamento: de <output id="f-ano-min-v"></output> até <output id="f-ano-max-v"></output></span>
+          <div class="faixa-dupla">
+            <input type="range" id="f-ano-min" aria-label="Ano mínimo">
+            <input type="range" id="f-ano-max" aria-label="Ano máximo">
+          </div>
+        </div>
+        <label class="campo">
+          <span class="rot">Nome contém <span class="selo-extra" title="O programa em C não tem busca por trecho de texto; este filtro existe só no site.">extra do site</span></span>
+          <input type="search" id="f-nome" placeholder="ex.: igreja, estação, escola" autocomplete="off">
+        </label>
+      </fieldset>
+
+      <fieldset class="bloco consulta-campo">
+        <legend><span>Parecido com…</span><code>SIM</code><code>ACCEPT</code></legend>
+        <label class="interruptor">
+          <input type="checkbox" id="s-ativo">
+          <span class="trilho" aria-hidden="true"></span>
+          <span>Dar nota para bens tombados perto de um ano</span>
+        </label>
+        <div id="s-controles" class="sim-controles">
+          <label class="campo"><span class="rot">Ano alvo <output id="s-alvo-v"></output></span><input type="range" id="s-alvo"></label>
+          <label class="campo"><span class="rot">Tolerância <output id="s-tol-v"></output></span><input type="range" id="s-tol" min="1" max="30" step="1"></label>
+          <label class="campo"><span class="rot">Nota mínima para aceitar <output id="s-aceite-v"></output></span><input type="range" id="s-aceite" min="0" max="1" step="0.05"></label>
+          <p class="formula">nota = 1 − |ano − alvo| ÷ tolerância</p>
+        </div>
+      </fieldset>
+
+      <fieldset class="bloco">
+        <legend><span>Onde guardar o resultado</span><code>--result</code></legend>
+        <div class="seletor-estruturas" id="sel-resultado" role="radiogroup" aria-label="Estrutura do resultado"></div>
+        <div id="org-detalhe" class="org-detalhe"></div>
+        <label class="campo campo-linha">
+          <span class="rot">Mostrar no máximo <code>--top-k</code></span>
+          <select id="topk">
+            <option value="5">5</option><option value="10">10</option><option value="20">20</option>
+            <option value="50">50</option><option value="100">100</option><option value="0">todos</option>
+          </select>
+        </label>
+      </fieldset>
+
+      <section class="bloco arquivo-consulta" aria-label="Arquivo de consulta">
+        <div class="arquivo-cab">
+          <h3>O arquivo que o programa lê</h3>
+          <div class="acoes">
+            <button id="q-copiar" class="botao-mini">Copiar</button>
+            <button id="q-baixar" class="botao-mini">Baixar</button>
+            <button id="q-editar" class="botao-mini">Editar à mão</button>
+          </div>
+        </div>
+        <pre id="q-texto" class="codigo consulta"></pre>
+        <textarea id="q-manual" class="codigo consulta" spellcheck="false" hidden aria-label="Arquivo de consulta editável"></textarea>
+        <p id="q-status" class="status" role="status"></p>
+        <details class="comando">
+          <summary>Rodar a mesma busca no programa em C</summary>
+          <pre id="q-comando" class="codigo"></pre>
+          <button id="cmd-copiar" class="botao-mini">Copiar comando</button>
+        </details>
+      </section>
+    </aside>
+
+    <main>
+      <!-- ============ 1. Mapa ============ -->
+      <section id="sec-mapa" class="aba-conteudo" role="tabpanel" aria-labelledby="aba-mapa">
+        <div class="placar" id="placar"></div>
+        <div class="aviso" id="aviso-limite" hidden></div>
+        <div class="mapa-e-lista">
+          <div class="cartao mapa-cartao">
+            <div class="cartao-cab">
+              <div>
+                <h2>Onde estão os bens encontrados</h2>
+                <p class="sub">Cada bolha é uma cidade; quanto maior, mais bens da sua busca.</p>
+              </div>
+              <div class="mapa-botoes" role="group" aria-label="Zoom do mapa">
+                <button id="z-mais" class="botao-icone" aria-label="Aproximar">+</button>
+                <button id="z-menos" class="botao-icone" aria-label="Afastar">−</button>
+                <button id="z-gsp" class="botao-mini">Grande SP</button>
+                <button id="z-tudo" class="botao-mini">Estado todo</button>
+              </div>
+            </div>
+            <div class="mapa-area" id="mapa-area">
+              <svg id="mapa" role="img" aria-label="Mapa dos municípios do estado de São Paulo com a quantidade de bens encontrados"></svg>
+            </div>
+            <div class="mapa-rodape">
+              <div class="legenda-bolhas" id="legenda-bolhas"></div>
+              <div class="fora-mapa" id="fora-mapa"></div>
+            </div>
+          </div>
+          <div class="cartao lista-cartao">
+            <div class="cartao-cab">
+              <div>
+                <h2>Resultado</h2>
+                <p class="sub" id="lista-desc"></p>
+              </div>
+            </div>
+            <ol class="resultados" id="lista-resultados"></ol>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 2. Estruturas ============ -->
+      <section id="sec-estruturas" class="aba-conteudo" role="tabpanel" aria-labelledby="aba-estruturas" hidden>
+        <div class="cartao">
+          <div class="cartao-cab">
+            <div>
+              <h2>O caminho de uma busca dentro do programa</h2>
+              <p class="sub">O programa lê o arquivo, guarda tudo numa estrutura <b>base</b>, passa por cada bem testando a busca e guarda os aprovados na estrutura de <b>resultado</b>.</p>
+            </div>
+          </div>
+          <ol class="pipeline" id="pipeline"></ol>
+          <div class="estr-config">
+            <label class="campo">
+              <span class="rot">Estrutura base <code>--base</code></span>
+              <select id="sel-base"></select>
+            </label>
+            <div class="campo">
+              <label class="rot" for="limite">Carregar só os primeiros <code>--limit</code> <output id="limite-v"></output></label>
+              <div class="limite-linha">
+                <input type="range" id="limite" min="0" step="1">
+                <button type="button" id="a-poucos" class="botao-mini">Usar só 15 bens</button>
+              </div>
+            </div>
+            <p class="estr-res-nota">Resultado: <b id="estr-res-nome"></b><br><span class="sub">troque em “Onde guardar o resultado”, no painel da busca</span></p>
+          </div>
+        </div>
+
+        <div class="cartao player" role="group" aria-label="Controle da animação">
+          <div class="player-botoes">
+            <button id="a-reiniciar" class="botao-icone" title="Recomeçar" aria-label="Recomeçar">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z" fill="currentColor"/></svg></button>
+            <button id="a-play" class="botao-principal" aria-label="Tocar">
+              <svg viewBox="0 0 24 24" aria-hidden="true" class="ic-play"><path d="M7 4v16l13-8z" fill="currentColor"/></svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true" class="ic-pausa"><path d="M6 4h4v16H6zm8 0h4v16h-4z" fill="currentColor"/></svg>
+              <span id="a-play-rot">Passo a passo</span></button>
+            <button id="a-passo" class="botao-icone" title="Próximo passo" aria-label="Próximo passo">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5v14l10-7zM16 5h2v14h-2z" fill="currentColor"/></svg></button>
+            <button id="a-fase" class="botao-mini" title="Pular para a próxima fase">Pular fase</button>
+            <button id="a-fim" class="botao-mini" title="Ir direto para o final">Ir para o fim</button>
+          </div>
+          <label class="velocidade">
+            <span>velocidade</span><input type="range" id="a-vel" min="1" max="10" value="4" aria-label="Velocidade">
+          </label>
+          <div class="fases" id="fases" aria-live="polite"></div>
+        </div>
+
+        <div class="estr-grade">
+          <div class="cartao evento-cartao">
+            <h3>O que está acontecendo</h3>
+            <div id="evento" class="evento" aria-live="polite"></div>
+          </div>
+          <div class="estr-paineis">
+            <div class="cartao">
+              <div class="painel-cab">
+                <h3>Estrutura do resultado: <span id="viz-res-nome"></span></h3>
+                <span class="pilula" id="viz-res-tam"></span>
+              </div>
+              <p class="explica" id="viz-res-explica"></p>
+              <div id="viz-res" class="viz"></div>
+              <details class="codigo-c">
+                <summary>Ver o código em C desta estrutura</summary>
+                <div id="codigo-res"></div>
+              </details>
+            </div>
+            <div class="cartao">
+              <div class="painel-cab">
+                <h3>Estrutura base: <span id="viz-base-nome"></span></h3>
+                <span class="pilula" id="viz-base-tam"></span>
+              </div>
+              <p class="explica" id="viz-base-explica"></p>
+              <div id="viz-base" class="viz compacto"></div>
+            </div>
+            <div class="cartao">
+              <div class="painel-cab">
+                <h3>Saída <code>--output</code></h3>
+                <span class="pilula" id="saida-tam"></span>
+              </div>
+              <ol class="saida" id="saida-linhas"></ol>
+            </div>
+          </div>
+        </div>
+        <div class="cartao">
+          <details class="codigo-c">
+            <summary>Ver o código em C da busca (query.c e main.c)</summary>
+            <div id="codigo-busca"></div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ============ 3. Corrida ============ -->
+      <section id="sec-corrida" class="aba-conteudo" role="tabpanel" aria-labelledby="aba-corrida" hidden>
+        <div class="cartao">
+          <div class="cartao-cab">
+            <div>
+              <h2>Quem guarda os resultados com menos trabalho?</h2>
+              <p class="sub">A sua busca roda 8 vezes, uma para cada estrutura de resultado. Contamos cada operação feita para guardar os <b id="corrida-n"></b>: ligar um nó, copiar um ponteiro ou comparar uma chave.</p>
+            </div>
+          </div>
+          <div class="barras" id="corrida-passos"></div>
+          <p class="nota" id="corrida-nota"></p>
+        </div>
+        <div class="cartao heroi" id="heroi"></div>
+        <div class="grade-2">
+          <div class="cartao">
+            <h3>Medido no programa em C: bens tombados</h3>
+            <p class="sub" id="medido-pat-sub"></p>
+            <div class="barras" id="medido-pat"></div>
+          </div>
+          <div class="cartao">
+            <h3>Medido no programa em C: asteroides (parte 1)</h3>
+            <p class="sub" id="medido-ast-sub"></p>
+            <div class="barras" id="medido-ast"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 4. Desafios ============ -->
+      <section id="sec-desafios" class="aba-conteudo" role="tabpanel" aria-labelledby="aba-desafios" hidden>
+        <div class="cartao">
+          <h2>Desafios</h2>
+          <p class="sub">Use a busca para descobrir as respostas. Travou? Peça uma dica, ou deixe o site montar a busca para você.</p>
+        </div>
+        <div class="desafios" id="desafios"></div>
+      </section>
+
+      <footer class="rodape">
+        <p><b>Dados:</b> <code>dados/patrimonio.csv</code>, lista de bens tombados pelo CONDEPHAAT (órgão estadual de patrimônio de SP). <b>Mapa:</b> malha municipal do IBGE.</p>
+        <p>Os resultados são calculados por <code>motor.js</code>, uma tradução em JavaScript do programa em C deste trabalho (mesmo leitor, mesmas regras de FILTER, SIM, ORDER, GROUP e CROSS e as mesmas 8 estruturas). A saída foi conferida com a do programa original.</p>
+      </footer>
+    </main>
+  </div>
+
+  <dialog id="detalhe" aria-labelledby="detalhe-titulo">
+    <form method="dialog"><button class="fechar botao-icone" aria-label="Fechar">×</button></form>
+    <div id="detalhe-corpo"></div>
+  </dialog>
+  <div id="dica" class="dica-flutuante" role="tooltip" hidden></div>
+
+  <script src="dados.js"></script>
+  <script src="mapa.js"></script>
+  <script src="codigo.js"></script>
+  <script src="experimentos.js"></script>
+  <script src="motor.js"></script>
+  <script src="viz.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
